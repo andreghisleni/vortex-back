@@ -10,6 +10,16 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
+    requireEmailVerification: true,
+    async sendResetPassword(data, request) {
+      // biome-ignore lint/suspicious/noConsole: <explanation>
+      console.log('Reset password link:', data);
+      // biome-ignore lint/suspicious/noConsole: <explanation>
+      console.log('Request info:', request);
+      // Here you can send the reset password link via email
+
+      await Promise.resolve();
+    },
   },
   plugins: [admin(), openAPI()],
   basePath: '/api',
