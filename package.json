@@ -5,7 +5,10 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "bun run --watch src/http/server.ts",
     "email": "email dev --dir src/emails",
-    "lint": "biome format --write"
+    "lint": "biome format --write",
+    "db:g": "prisma generate",
+    "db:m": "prisma migrate dev",
+    "db:s": "prisma studio"
   },
   "dependencies": {
     "@aws-sdk/client-ses": "^3.876.0",

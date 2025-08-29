@@ -86,3 +86,20 @@ model Verification {
 
   @@map("verifications")
 }
+
+model Event {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  ticketType EventTicketType @default(SINGLE_NUMERATION)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("events")
+}
+
+enum EventTicketType {
+  SINGLE_NUMERATION
+  MULTIPLE_NUMERATIONS
+}
