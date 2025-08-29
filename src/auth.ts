@@ -1,8 +1,20 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: <explanation> */
+
+import { SES, type SendEmailCommandInput } from '@aws-sdk/client-ses';
+import { fromEnv } from '@aws-sdk/credential-providers';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { admin, openAPI } from 'better-auth/plugins';
+
+import { renderToStaticMarkup } from 'react-dom/server';
 import { prisma } from './db/client';
+import { ResetPasswordEmail } from './emails/reset-password';
+import { env } from './env';
+
+const ses = new SES({
+  credentials: process.env.NODE_ENV === 'production' ? fromEnv() : undefined,
+  region: 'us-east-2',
+});
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
@@ -11,12 +23,35 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
-    async sendResetPassword(data, request) {
+    async sendResetPassword(data) {
       // biome-ignore lint/suspicious/noConsole: <explanation>
       console.log('Reset password link:', data);
-      // biome-ignore lint/suspicious/noConsole: <explanation>
-      console.log('Request info:', request);
-      // Here you can send the reset password link via email
+
+      const html = renderToStaticMarkup(
+        ResetPasswordEmail({
+          userName: data.user.name ?? undefined,
+          resetLink: `${env.BETTER_AUTH_URL}/reset-password/${data.token}`,
+        })
+      );
+
+      await ses.sendEmail({
+        Source: 'envio@andreg.com.br',
+        Destination: {
+          ToAddresses: [data.user.email],
+        },
+        Message: {
+          Body: {
+            Html: {
+              Charset: 'UTF-8',
+              Data: html,
+            },
+          },
+          Subject: {
+            Charset: 'UTF-8',
+            Data: 'Verify your email address',
+          },
+        },
+      } satisfies SendEmailCommandInput);
 
       await Promise.resolve();
     },

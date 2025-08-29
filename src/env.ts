@@ -4,6 +4,7 @@ const schema = z.object({
   PORT: z.coerce.number().default(3000),
   DATABASE_URL: z.string().min(5).max(100),
   OTEL_TRACE_EXPORTER_URL: z.string(),
+  BETTER_AUTH_URL: z.string(),
 });
 // Faz o "parse" das variáveis de ambiente (process.env) usando o schema definido
 const parsedEnv = schema.safeParse(process.env);
