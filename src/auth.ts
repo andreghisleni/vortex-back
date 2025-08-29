@@ -22,7 +22,7 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: true,
+    // requireEmailVerification: true,
     async sendResetPassword(data) {
       // biome-ignore lint/suspicious/noConsole: <explanation>
       console.log('Reset password link:', data);
@@ -30,7 +30,9 @@ export const auth = betterAuth({
       const html = renderToStaticMarkup(
         ResetPasswordEmail({
           userName: data.user.name ?? undefined,
-          resetLink: `${env.BETTER_AUTH_URL}/reset-password/${data.token}`,
+          resetLink: `${env.BETTER_AUTH_URL}/reset-password/${data.token}?email=${encodeURIComponent(
+            data.user.email
+          )}`,
         })
       );
 
