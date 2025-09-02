@@ -1,7 +1,7 @@
 import cors from '@elysiajs/cors';
 import swagger from '@elysiajs/swagger';
 import { Elysia } from 'elysia';
-import { auth, OpenAPI } from '~/auth';
+import { auth } from '~/auth';
 import { env } from '~/env';
 import { tracing } from '~/tracing';
 import { events } from './routes/events';
@@ -24,8 +24,8 @@ const app = new Elysia()
           title: 'Vortex API',
           version: '1.0.0',
         },
-        components: await OpenAPI.components,
-        paths: await OpenAPI.getPaths(),
+        // components: await OpenAPI.components,
+        // paths: await OpenAPI.getPaths(),
       },
     })
   )

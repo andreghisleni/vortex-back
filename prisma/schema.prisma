@@ -32,6 +32,8 @@ model User {
   banReason  String?
   banExpires DateTime?
 
+  events Event[]
+
   @@map("users")
 }
 
@@ -92,6 +94,9 @@ model Event {
   name        String
   description String?
   ticketType EventTicketType @default(SINGLE_NUMERATION)
+
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
