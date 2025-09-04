@@ -72,9 +72,12 @@ export const auth = betterAuth({
         type: 'string',
         required: false,
       },
-      lastUserEvent: {
+      lastUserEventId: {
         type: 'string',
         required: false,
+        input: true,
+        returned: true,
+        description: 'ID of the last event the user interacted with',
       }
     }
   }

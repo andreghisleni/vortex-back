@@ -6,6 +6,7 @@ import { auth } from '~/auth';
 import { env } from '~/env';
 import { tracing } from '~/tracing';
 import { events } from './routes/events';
+import { users } from './routes/users';
 
 const app = new Elysia()
   .use(tracing)
@@ -32,6 +33,7 @@ const app = new Elysia()
   )
   .mount(auth.handler)
   .use(events)
+  .use(users)
   .get('/', () => 'Hello Elysia')
   .listen({
     hostname: '0.0.0.0',

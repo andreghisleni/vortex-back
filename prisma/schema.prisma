@@ -34,6 +34,8 @@ model User {
 
   events Event[]
 
+  lastUserEventId String?
+
   @@map("users")
 }
 
@@ -90,16 +92,16 @@ model Verification {
 }
 
 model Event {
-  id          String   @id @default(uuid())
+  id          String          @id @default(uuid())
   name        String
   description String?
-  ticketType EventTicketType @default(SINGLE_NUMERATION)
+  ticketType  EventTicketType @default(SINGLE_NUMERATION)
 
   ownerId String?
   owner   User?   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("events")
 }
