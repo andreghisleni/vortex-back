@@ -1,7 +1,11 @@
-import { EventTicketType } from '@prisma/client';
 import Elysia, { t } from 'elysia';
 import { authMacro } from '~/auth';
 import { prisma } from '~/db/client';
+
+const ticketTypeSchema = t.Union([t.Literal('SINGLE_NUMERATION'), t.Literal('MULTIPLE_NUMERATIONS')], {
+  default: 'SINGLE_NUMERATION',
+  description: 'Type of ticketing system used for the event',
+});
 
 const eventSchema = t.Object({
   id: t.String({
@@ -16,14 +20,11 @@ const eventSchema = t.Object({
     description: 'Description of the event',
     maxLength: 500,
   })),
-  ticketType: t.Enum(EventTicketType, {
-    default: EventTicketType.SINGLE_NUMERATION,
-    description: 'Type of ticketing system used for the event',
-  }),
-  ownerId: t.String({
+  ticketType: ticketTypeSchema,
+  ownerId: t.Nullable(t.String({
     format: 'uuid',
     description: 'Unique identifier for the owner of the event',
-  }),
+  })),
   createdAt: t.Date({
     description: 'Timestamp when the event was created',
   }),
@@ -41,17 +42,27 @@ export const events = new Elysia({
   .macro(authMacro)
   .get(
     '/',
-    ({ user }) => {
-      // biome-ignore lint/suspicious/noConsole: <explanation>
-      console.log(user);
-      return 'Events API';
+    async () => {
+      const e = await prisma.event.findMany();
+
+      return e;
     },
-    { auth: true }
+    {
+      auth: true,
+      detail: {
+        tags: ['Events'],
+        summary: 'Get all events',
+        operationId: 'getAllEvents'
+      },
+      response: {
+        200: t.Array(eventSchema)
+      }
+    }
   )
   .post(
     '/',
-    async ({ user, body, db }) => {
-      const event = await db.event.create({
+    async ({ user, body }) => {
+      const event = await prisma.event.create({
         data: {
           ...body,
           ownerId: user.id
@@ -63,16 +74,19 @@ export const events = new Elysia({
       detail: {
         tags: ['Events'],
         summary: 'Create a new event',
+        operationId: 'createEvent',
       },
       auth: true,
       body: t.Object({
         name: t.String({
           minLength: 3,
+          description: 'Name of the event',
         }),
-        description: t.String({
-          maxLength: 500
-        }),
-        ticketType: t.Enum(EventTicketType)
+        description: t.Nullable(t.String({
+          maxLength: 500,
+          description: 'Description of the event',
+        })),
+        ticketType: ticketTypeSchema,
       }),
       response: {
         200: eventSchema,
@@ -100,6 +114,7 @@ export const events = new Elysia({
       detail: {
         tags: ['Events'],
         summary: 'Get event by ID',
+        operationId: 'getEventById',
       },
       params: t.Object({
         id: t.String({ format: 'uuid' }),

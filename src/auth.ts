@@ -61,6 +61,23 @@ export const auth = betterAuth({
   plugins: [admin(), openAPI()],
   basePath: '/api',
   trustedOrigins: ['http://localhost:5173'],
+  advanced: {
+    database: {
+      generateId: false,
+    },
+  },
+  user: {
+    additionalFields: {
+      image: {
+        type: 'string',
+        required: false,
+      },
+      lastUserEvent: {
+        type: 'string',
+        required: false,
+      }
+    }
+  }
 });
 
 let _schema: ReturnType<typeof auth.api.generateOpenAPISchema>;
