@@ -8,7 +8,8 @@
     "lint": "biome format --write",
     "db:g": "prisma generate",
     "db:m": "prisma migrate dev",
-    "db:s": "prisma studio"
+    "db:s": "prisma studio",
+    "db:seed": "bun run prisma/seed.ts"
   },
   "dependencies": {
     "@aws-sdk/client-ses": "^3.876.0",
