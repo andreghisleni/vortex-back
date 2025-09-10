@@ -2,12 +2,10 @@ import Elysia, { t } from 'elysia';
 import { authMacro } from '~/auth';
 import { prisma } from '~/db/client';
 
-
 export const users = new Elysia({
   prefix: '/users',
   name: 'Users',
   tags: ['Users'],
-
 })
   .macro(authMacro)
   .put(
@@ -36,13 +34,16 @@ export const users = new Elysia({
       },
       auth: true,
       params: t.Object({
-        eventId: t.String({ format: 'uuid', description: 'Unique identifier for the event' }),
+        eventId: t.String({
+          format: 'uuid',
+          description: 'Unique identifier for the event',
+        }),
       }),
       response: {
         201: t.Void(),
         400: t.Object({
           error: t.String(),
-        })
-      }
+        }),
+      },
     }
-  )
+  );

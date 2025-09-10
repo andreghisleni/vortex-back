@@ -2,10 +2,13 @@ import Elysia, { t } from 'elysia';
 import { authMacro } from '~/auth';
 import { prisma } from '~/db/client';
 
-const ticketTypeSchema = t.Union([t.Literal('SINGLE_NUMERATION'), t.Literal('MULTIPLE_NUMERATIONS')], {
-  default: 'SINGLE_NUMERATION',
-  description: 'Type of ticketing system used for the event',
-});
+const ticketTypeSchema = t.Union(
+  [t.Literal('SINGLE_NUMERATION'), t.Literal('MULTIPLE_NUMERATIONS')],
+  {
+    default: 'SINGLE_NUMERATION',
+    description: 'Type of ticketing system used for the event',
+  }
+);
 
 const eventSchema = t.Object({
   id: t.String({
@@ -16,28 +19,31 @@ const eventSchema = t.Object({
     description: 'Name of the event',
     minLength: 3,
   }),
-  description: t.Nullable(t.String({
-    description: 'Description of the event',
-    maxLength: 500,
-  })),
+  description: t.Nullable(
+    t.String({
+      description: 'Description of the event',
+      maxLength: 500,
+    })
+  ),
   ticketType: ticketTypeSchema,
-  ownerId: t.Nullable(t.String({
-    format: 'uuid',
-    description: 'Unique identifier for the owner of the event',
-  })),
+  ownerId: t.Nullable(
+    t.String({
+      format: 'uuid',
+      description: 'Unique identifier for the owner of the event',
+    })
+  ),
   createdAt: t.Date({
     description: 'Timestamp when the event was created',
   }),
   updatedAt: t.Date({
     description: 'Timestamp when the event was last updated',
-  })
+  }),
 });
 
 export const events = new Elysia({
   prefix: '/events',
   name: 'Events',
   tags: ['Events'],
-
 })
   .macro(authMacro)
   .get(
@@ -52,11 +58,11 @@ export const events = new Elysia({
       detail: {
         tags: ['Events'],
         summary: 'Get all events',
-        operationId: 'getAllEvents'
+        operationId: 'getAllEvents',
       },
       response: {
-        200: t.Array(eventSchema)
-      }
+        200: t.Array(eventSchema),
+      },
     }
   )
   .post(
@@ -65,8 +71,8 @@ export const events = new Elysia({
       const event = await prisma.event.create({
         data: {
           ...body,
-          ownerId: user.id
-        }
+          ownerId: user.id,
+        },
       });
       return event;
     },
@@ -82,18 +88,20 @@ export const events = new Elysia({
           minLength: 3,
           description: 'Name of the event',
         }),
-        description: t.Nullable(t.String({
-          maxLength: 500,
-          description: 'Description of the event',
-        })),
+        description: t.Nullable(
+          t.String({
+            maxLength: 500,
+            description: 'Description of the event',
+          })
+        ),
         ticketType: ticketTypeSchema,
       }),
       response: {
         200: eventSchema,
         404: t.Object({
           error: t.String(),
-        })
-      }
+        }),
+      },
     }
   )
   .get(
@@ -150,7 +158,8 @@ export const events = new Elysia({
         // totalPayedTickets,
         // totalPayedTicketsOnLastWeek,
         totalWithoutCriticaCalabresa,
-        totalWithoutCriticaMista, totalValuePayedTickets,
+        totalWithoutCriticaMista,
+        totalValuePayedTickets,
         totalValuePayedTicketsOnLastWeek,
         membersWithPizzaAndPaymentData,
         totalMembers,
@@ -294,7 +303,7 @@ export const events = new Elysia({
         prisma.member.count({
           where: {
             eventId: params.id,
-          }
+          },
         }),
         prisma.ticketRange.findMany({
           where: {
@@ -302,41 +311,40 @@ export const events = new Elysia({
             generatedAt: null,
             deletedAt: null,
           },
-        })
-      ])
-
+        }),
+      ]);
 
       const totalValue = totalValuePayedTickets.reduce(
         (acc, ticket) => acc + ticket.amount,
-        0,
-      )
+        0
+      );
 
       const totalValueOnLastWeek = totalValuePayedTicketsOnLastWeek.reduce(
         (acc, ticket) => acc + ticket.amount,
-        0,
-      )
+        0
+      );
 
       const processedMembers = membersWithPizzaAndPaymentData.map((member) => {
         const { calabresaCount, mistaCount } = member.tickets.reduce(
           (acc, ticket) => {
             if (ticket.number >= 0 && ticket.number <= 1000) {
-              acc.calabresaCount++
+              acc.calabresaCount++;
             } else if (ticket.number >= 2000 && ticket.number <= 3000) {
-              acc.mistaCount++
+              acc.mistaCount++;
             }
-            return acc
+            return acc;
           },
-          { calabresaCount: 0, mistaCount: 0 },
-        )
+          { calabresaCount: 0, mistaCount: 0 }
+        );
 
         const totalPaymentsMade = member.payments.reduce(
           (sum, payment) => sum + payment.amount,
-          0,
-        )
+          0
+        );
 
-        const totalPizzas = calabresaCount + mistaCount
-        const totalPizzasCostExpected = totalPizzas * 50
-        const isPaidOff = totalPaymentsMade >= totalPizzasCostExpected
+        const totalPizzas = calabresaCount + mistaCount;
+        const totalPizzasCostExpected = totalPizzas * 50;
+        const isPaidOff = totalPaymentsMade >= totalPizzasCostExpected;
 
         return {
           memberId: member.id,
@@ -350,8 +358,8 @@ export const events = new Elysia({
           isAllConfirmedButNotYetFullyPaid:
             member.isAllConfirmedButNotYetFullyPaid, // Passa o campo para o objeto processado
           status: isPaidOff ? 'Quitado' : 'Devendo',
-        }
-      })
+        };
+      });
 
       const payedPerMember = processedMembers
         .filter((m) => m.isPaidOff)
@@ -363,13 +371,13 @@ export const events = new Elysia({
           {
             calabresa: 0,
             mista: 0,
-          },
-        )
+          }
+        );
 
       const possibleTotalTicketsData = processedMembers
         .filter(
           (m) =>
-            m.isPaidOff || (!m.isPaidOff && m.isAllConfirmedButNotYetFullyPaid),
+            m.isPaidOff || (!m.isPaidOff && m.isAllConfirmedButNotYetFullyPaid)
         )
         .reduce(
           (acc, member) => ({
@@ -381,17 +389,17 @@ export const events = new Elysia({
             totalTickets: 0,
             calabresa: 0,
             mista: 0,
-          },
-        )
+          }
+        );
 
-      const numbers: number[] = []
+      const numbers: number[] = [];
       for (const ticketRange of ticketRanges) {
         if (ticketRange.end) {
           for (let i = ticketRange.start; i <= ticketRange.end; i++) {
-            numbers.push(i)
+            numbers.push(i);
           }
         } else {
-          numbers.push(ticketRange.start)
+          numbers.push(ticketRange.start);
         }
       }
 
@@ -409,7 +417,7 @@ export const events = new Elysia({
 
         totalPayedTickets: Number((totalValue / 50).toFixed(0)),
         totalPayedTicketsOnLastWeek: Number(
-          (totalValueOnLastWeek / 50).toFixed(0),
+          (totalValueOnLastWeek / 50).toFixed(0)
         ),
         totalValuePayedTickets: totalValue,
         totalValuePayedTicketsOnLastWeek: totalValueOnLastWeek,
@@ -421,7 +429,7 @@ export const events = new Elysia({
         totalMembers,
         totalTicketRangeToGenerate: ticketRanges.length,
         totalNumbersToGenerate: numbers.length,
-      }
+      };
     },
     {
       detail: {

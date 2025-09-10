@@ -1,11 +1,12 @@
-
 import cors from '@elysiajs/cors';
 import swagger from '@elysiajs/swagger';
 import { Elysia } from 'elysia';
 import { auth } from '~/auth';
 import { env } from '~/env';
 import { tracing } from '~/tracing';
+import { event } from './routes/event-routes';
 import { events } from './routes/events';
+import { scoutSessions } from './routes/scout-sessions';
 import { users } from './routes/users';
 
 const app = new Elysia()
@@ -33,7 +34,9 @@ const app = new Elysia()
   )
   .mount(auth.handler)
   .use(events)
+  .use(scoutSessions)
   .use(users)
+  .use(event)
   .get('/', () => 'Hello Elysia')
   .listen({
     hostname: '0.0.0.0',

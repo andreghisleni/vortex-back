@@ -5,13 +5,9 @@
     "moduleResolution": "node",
     "baseUrl": "./",
     "paths": {
-      "~/*": [
-        "src/*"
-      ]
+      "~/*": ["src/*"]
     },
-    "types": [
-      "bun-types"
-    ],
+    "types": ["bun-types"],
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,

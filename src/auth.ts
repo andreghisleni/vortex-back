@@ -78,9 +78,9 @@ export const auth = betterAuth({
         input: true,
         returned: true,
         description: 'ID of the last event the user interacted with',
-      }
-    }
-  }
+      },
+    },
+  },
 });
 
 let _schema: ReturnType<typeof auth.api.generateOpenAPISchema>;
