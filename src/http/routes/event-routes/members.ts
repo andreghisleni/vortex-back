@@ -14,6 +14,23 @@ const memberSchema = t.Object({
   isAllConfirmedButNotYetFullyPaid: t.Boolean(),
   sessionId: t.String({ format: 'uuid' }),
   createdAt: t.Date(),
+  tickets: t.Array(t.Object({
+    id: t.String({ format: 'uuid' }),
+    number: t.Number(),
+    memberId: t.Nullable(t.String({ format: 'uuid' })),
+    name: t.Nullable(t.String()),
+    phone: t.Nullable(t.String()),
+    description: t.Nullable(t.String()),
+    deliveredAt: t.Nullable(t.Date()),
+    returned: t.Boolean(),
+    createdAt: t.Date(),
+    created: t.Union([
+      t.Literal('ONTHELOT'),
+      t.Literal('AFTERIMPORT'),
+    ]),
+    eventId: t.String({ format: 'uuid' }),
+    ticketRangeId: t.Nullable(t.String({ format: 'uuid' })),
+  })),
 });
 
 // Schema para o corpo da criação: eventId foi REMOVIDO daqui
@@ -46,7 +63,6 @@ const memberParamsSchema = t.Object({
 
 export const members = new Elysia({
   prefix: '/members', // Este prefixo será adicionado ao prefixo do pai
-  name: 'Members-Plugin',
   tags: ['Event - Members'],
 })
   .macro(authMacro)
@@ -58,6 +74,9 @@ export const members = new Elysia({
         where: {
           eventId: params.eventId,
         },
+        include: {
+          tickets: true,
+        }
       });
     },
     {
@@ -81,6 +100,9 @@ export const members = new Elysia({
           eventId: params.eventId, // <-- Ponto chave!
           cleanName,
         },
+        include: {
+          tickets: true,
+        }
       });
     },
     {
@@ -103,6 +125,9 @@ export const members = new Elysia({
           id: params.id,
           eventId: params.eventId, // Garante segurança e escopo correto
         },
+        include: {
+          tickets: true,
+        },
       });
 
       if (!member) {
@@ -113,7 +138,14 @@ export const members = new Elysia({
     },
     {
       params: memberParamsSchema,
-      response: { 200: memberSchema, 404: t.Object({ error: t.String() }) },
+      response: {
+        200: memberSchema,
+        404: t.Object({
+          error: t.String({
+            description: 'Error message',
+          }),
+        }),
+      },
       detail: {
         summary: 'Get a member by ID for a specific event',
         operationId: 'getEventMemberById',
@@ -135,6 +167,7 @@ export const members = new Elysia({
             ...body,
             cleanName: body.name ? body.name.trim().toLowerCase() : undefined,
           },
+          include: { tickets: true },
         });
       } catch {
         set.status = 404;
@@ -145,7 +178,14 @@ export const members = new Elysia({
       auth: true,
       params: memberParamsSchema,
       body: updateMemberBodySchema,
-      response: { 200: memberSchema, 404: t.Object({ error: t.String() }) },
+      response: {
+        200: memberSchema,
+        404: t.Object({
+          error: t.String({
+            description: 'Error message',
+          }),
+        }),
+      },
       detail: {
         summary: 'Update a member by ID for a specific event',
         operationId: 'updateEventMemberById',

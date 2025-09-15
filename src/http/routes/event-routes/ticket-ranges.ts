@@ -84,7 +84,11 @@ export const ticketRanges = new Elysia({
       params: t.Object({ id: t.String({ format: 'uuid' }) }),
       response: {
         200: ticketRangeSchema,
-        404: t.Object({ error: t.String() }),
+        404: t.Object({
+          error: t.String({
+            description: 'Error message',
+          }),
+        }),
       },
       detail: {
         summary: 'Get a ticket range by ID',
@@ -114,7 +118,11 @@ export const ticketRanges = new Elysia({
       body: t.Partial(ticketRangeBodySchema),
       response: {
         200: ticketRangeSchema,
-        404: t.Object({ error: t.String() }),
+        404: t.Object({
+          error: t.String({
+            description: 'Error message',
+          }),
+        }),
       },
       detail: {
         summary: 'Update a ticket range by ID',
@@ -139,7 +147,11 @@ export const ticketRanges = new Elysia({
 //   {
 //     auth: true,
 //     params: t.Object({ id: t.String({ format: 'uuid' }) }),
-//     response: { 204: t.Void(), 404: t.Object({ error: t.String() }) },
+//     response: { 204: t.Void(), 404: t.Object({
+// error: t.String({
+//   description: 'Error message'
+// })
+//         }) },
 //     detail: { summary: 'Soft delete a ticket range by ID' },
 //   }
 // );

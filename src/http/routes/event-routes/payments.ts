@@ -30,19 +30,31 @@ const paymentBodySchema = t.Object({
 
 export const payments = new Elysia({
   prefix: '/payments',
-  name: 'Payments',
-  tags: ['Payments'],
+  tags: ['Event - Payments'],
 })
   .macro(authMacro)
   .get(
     '/',
-    async () => {
-      return await prisma.payment.findMany({ where: { deletedAt: null } });
+    async ({ params }) => {
+      return await prisma.payment.findMany({
+        where: {
+          deletedAt: null,
+          member: {
+            eventId: params.eventId,
+          },
+        },
+      });
     },
     {
       auth: true,
-      detail: { summary: 'Get all active payments' },
+      detail: {
+        summary: 'Get all active payments',
+        operationId: 'getAllEventPayments',
+      },
       response: t.Array(paymentSchema),
+      params: t.Object({
+        eventId: t.String({ format: 'uuid' }),
+      }),
     }
   )
   .post(
@@ -54,14 +66,23 @@ export const payments = new Elysia({
       auth: true,
       body: paymentBodySchema,
       response: paymentSchema,
-      detail: { summary: 'Create a new payment' },
+      detail: {
+        summary: 'Create a new payment',
+        operationId: 'createEventPayment',
+      },
+      params: t.Object({
+        eventId: t.String({ format: 'uuid' }),
+      }),
     }
   )
   .get(
     '/:id',
     async ({ params, set }) => {
       const payment = await prisma.payment.findUnique({
-        where: { id: params.id },
+        where: {
+          id: params.id,
+          member: { eventId: params.eventId },
+        },
       });
       if (!payment || payment.deletedAt) {
         set.status = 404;
@@ -70,9 +91,22 @@ export const payments = new Elysia({
       return payment;
     },
     {
-      params: t.Object({ id: t.String({ format: 'uuid' }) }),
-      response: { 200: paymentSchema, 404: t.Object({ error: t.String() }) },
-      detail: { summary: 'Get a payment by ID' },
+      params: t.Object({
+        id: t.String({ format: 'uuid' }),
+        eventId: t.String({ format: 'uuid' }),
+      }),
+      response: {
+        200: paymentSchema,
+        404: t.Object({
+          error: t.String({
+            description: 'Error message',
+          }),
+        }),
+      },
+      detail: {
+        summary: 'Get a payment by ID',
+        operationId: 'getEventPaymentById',
+      },
     }
   )
   .put(
@@ -83,17 +117,30 @@ export const payments = new Elysia({
           where: { id: params.id },
           data: body,
         });
-      } catch (e) {
+      } catch {
         set.status = 404;
         return { error: 'Payment not found' };
       }
     },
     {
       auth: true,
-      params: t.Object({ id: t.String({ format: 'uuid' }) }),
+      params: t.Object({
+        id: t.String({ format: 'uuid' }),
+        eventId: t.String({ format: 'uuid' }),
+      }),
       body: t.Partial(paymentBodySchema),
-      response: { 200: paymentSchema, 404: t.Object({ error: t.String() }) },
-      detail: { summary: 'Update a payment by ID' },
+      response: {
+        200: paymentSchema,
+        404: t.Object({
+          error: t.String({
+            description: 'Error message',
+          }),
+        }),
+      },
+      detail: {
+        summary: 'Update a payment by ID',
+        operationId: 'updateEventPaymentById',
+      },
     }
   )
   .delete(
@@ -108,15 +155,28 @@ export const payments = new Elysia({
           },
         });
         set.status = 204;
-      } catch (e) {
+      } catch {
         set.status = 404;
         return { error: 'Payment not found' };
       }
     },
     {
       auth: true,
-      params: t.Object({ id: t.String({ format: 'uuid' }) }),
-      response: { 204: t.Void(), 404: t.Object({ error: t.String() }) },
-      detail: { summary: 'Soft delete a payment by ID' },
+      params: t.Object({
+        id: t.String({ format: 'uuid' }),
+        eventId: t.String({ format: 'uuid' }),
+      }),
+      response: {
+        204: t.Void(),
+        404: t.Object({
+          error: t.String({
+            description: 'Error message',
+          }),
+        }),
+      },
+      detail: {
+        summary: 'Soft delete a payment by ID',
+        operationId: 'deleteEventPaymentById',
+      },
     }
   );

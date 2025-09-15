@@ -40,31 +40,46 @@ const ticketBodySchema = t.Object({
 
 export const tickets = new Elysia({
   prefix: '/tickets',
-  name: 'Tickets',
-  tags: ['Tickets'],
+  tags: ['Event - Tickets'],
 })
   .macro(authMacro)
   .get(
     '/',
-    async () => {
-      return await prisma.ticket.findMany();
+    async ({ params }) => {
+      return await prisma.ticket.findMany({
+        where: { eventId: params.eventId },
+      });
     },
     {
       auth: true,
-      detail: { summary: 'Get all tickets' },
+      detail: {
+        summary: 'Get all tickets',
+        operationId: 'getAllEventTickets',
+      },
       response: t.Array(ticketSchema),
+      params: t.Object({
+        eventId: t.String({ format: 'uuid' }),
+      }),
     }
   )
   .post(
     '/',
-    async ({ body }) => {
-      return await prisma.ticket.create({ data: body });
+    async ({ body, params }) => {
+      return await prisma.ticket.create({
+        data: { ...body, eventId: params.eventId },
+      });
     },
     {
       auth: true,
       body: ticketBodySchema,
       response: ticketSchema,
-      detail: { summary: 'Create a new ticket' },
+      detail: {
+        summary: 'Create a new ticket',
+        operationId: 'createEventTicket',
+      },
+      params: t.Object({
+        eventId: t.String({ format: 'uuid' }),
+      }),
     }
   )
   .get(
@@ -73,16 +88,29 @@ export const tickets = new Elysia({
       const ticket = await prisma.ticket.findUnique({
         where: { id: params.id },
       });
-      if (!ticket) {
+      if (!ticket || ticket.eventId !== params.eventId) {
         set.status = 404;
         return { error: 'Ticket not found' };
       }
       return ticket;
     },
     {
-      params: t.Object({ id: t.String({ format: 'uuid' }) }),
-      response: { 200: ticketSchema, 404: t.Object({ error: t.String() }) },
-      detail: { summary: 'Get a ticket by ID' },
+      params: t.Object({
+        id: t.String({ format: 'uuid' }),
+        eventId: t.String({ format: 'uuid' }),
+      }),
+      response: {
+        200: ticketSchema,
+        404: t.Object({
+          error: t.String({
+            description: 'Error message',
+          }),
+        }),
+      },
+      detail: {
+        summary: 'Get a ticket by ID',
+        operationId: 'getEventTicketById',
+      },
     }
   )
   .put(
@@ -93,34 +121,62 @@ export const tickets = new Elysia({
           where: { id: params.id },
           data: body,
         });
-      } catch (e) {
+      } catch {
         set.status = 404;
         return { error: 'Ticket not found' };
       }
     },
     {
       auth: true,
-      params: t.Object({ id: t.String({ format: 'uuid' }) }),
+      params: t.Object({
+        id: t.String({ format: 'uuid' }),
+        eventId: t.String({ format: 'uuid' }),
+      }),
       body: t.Partial(ticketBodySchema),
-      response: { 200: ticketSchema, 404: t.Object({ error: t.String() }) },
-      detail: { summary: 'Update a ticket by ID' },
+      response: {
+        200: ticketSchema,
+        404: t.Object({
+          error: t.String({
+            description: 'Error message',
+          }),
+        }),
+      },
+      detail: {
+        summary: 'Update a ticket by ID',
+        operationId: 'updateEventTicketById',
+      },
     }
   )
   .delete(
     '/:id',
     async ({ params, set }) => {
       try {
-        await prisma.ticket.delete({ where: { id: params.id } });
+        await prisma.ticket.delete({
+          where: { id: params.id, eventId: params.eventId },
+        });
         set.status = 204;
-      } catch (e) {
+      } catch {
         set.status = 404;
         return { error: 'Ticket not found' };
       }
     },
     {
       auth: true,
-      params: t.Object({ id: t.String({ format: 'uuid' }) }),
-      response: { 204: t.Void(), 404: t.Object({ error: t.String() }) },
-      detail: { summary: 'Delete a ticket by ID' },
+      params: t.Object({
+        id: t.String({ format: 'uuid' }),
+        eventId: t.String({ format: 'uuid' }),
+      }),
+      response: {
+        204: t.Void(),
+        404: t.Object({
+          error: t.String({
+            description: 'Error message',
+          }),
+        }),
+      },
+      detail: {
+        summary: 'Delete a ticket by ID',
+        operationId: 'deleteEventTicketById',
+      },
     }
   );
