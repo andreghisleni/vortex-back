@@ -1,31 +1,47 @@
-import cors from '@elysiajs/cors';
-import swagger from '@elysiajs/swagger';
-import { Elysia } from 'elysia';
-import { auth } from '~/auth';
-import { env } from '~/env';
-import { tracing } from '~/tracing';
-import { event } from './routes/event-routes';
-import { events } from './routes/events';
-import { scoutSessions } from './routes/scout-sessions';
-import { users } from './routes/users';
+import cors from "@elysiajs/cors";
+import openapi from "@elysiajs/openapi";
+import swagger from "@elysiajs/swagger";
+import { Elysia } from "elysia";
+import { z } from "zod/v4";
+import { auth } from "~/auth";
+import { env } from "~/env";
+import { tracing } from "~/tracing";
+import { event } from "./routes/event-routes";
+import { events } from "./routes/events";
+import { scoutSessions } from "./routes/scout-sessions";
+import { users } from "./routes/users";
 
 const app = new Elysia()
   .use(tracing)
   .use(
     cors({
-      origin: 'http://localhost:5173',
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      origin: "http://localhost:5173",
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
       credentials: true,
-      allowedHeaders: ['Content-Type', 'Authorization'],
+      allowedHeaders: ["Content-Type", "Authorization"],
+    })
+  )
+  .use(
+    openapi({
+      path: "/docs",
+      documentation: {
+        info: {
+          title: "Vortex API",
+          version: "1.0.0",
+        },
+      },
+      mapJsonSchema: {
+        zod: z.toJSONSchema,
+      },
     })
   )
   .use(
     swagger({
-      path: '/docs',
+      path: "/docs2",
       documentation: {
         info: {
-          title: 'Vortex API',
-          version: '1.0.0',
+          title: "Vortex API",
+          version: "1.0.0",
         },
         // components: await OpenAPI.components,
         // paths: await OpenAPI.getPaths(),
@@ -37,9 +53,9 @@ const app = new Elysia()
   .use(scoutSessions)
   .use(users)
   .use(event)
-  .get('/', () => 'Hello Elysia')
+  .get("/", () => "Hello Elysia")
   .listen({
-    hostname: '0.0.0.0',
+    hostname: "0.0.0.0",
     port: env.PORT,
   });
 

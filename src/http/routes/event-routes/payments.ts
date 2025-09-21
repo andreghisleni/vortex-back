@@ -1,18 +1,18 @@
-import Elysia, { t } from 'elysia';
-import { authMacro } from '~/auth';
-import { prisma } from '~/db/client';
+import Elysia, { t } from "elysia";
+import { authMacro } from "~/auth";
+import { prisma } from "~/db/client";
 
 // Schema para o enum PaymentType
-const paymentTypeSchema = t.Union([t.Literal('CASH'), t.Literal('PIX')]);
+const paymentTypeSchema = t.Union([t.Literal("CASH"), t.Literal("PIX")]);
 
 // Schema para o modelo Payment
 const paymentSchema = t.Object({
-  id: t.String({ format: 'uuid' }),
+  id: t.String({ format: "uuid" }),
   visionId: t.Nullable(t.String()),
   amount: t.Number(),
   type: paymentTypeSchema,
   payedAt: t.Date(),
-  memberId: t.String({ format: 'uuid' }),
+  memberId: t.String({ format: "uuid" }),
   createdAt: t.Date(),
   updatedAt: t.Date(),
   deletedAt: t.Nullable(t.Date()),
@@ -23,18 +23,18 @@ const paymentSchema = t.Object({
 const paymentBodySchema = t.Object({
   amount: t.Number(),
   type: paymentTypeSchema,
-  memberId: t.String({ format: 'uuid' }),
+  memberId: t.String({ format: "uuid" }),
   visionId: t.Optional(t.String()),
   payedAt: t.Optional(t.Date()),
 });
 
 export const payments = new Elysia({
-  prefix: '/payments',
-  tags: ['Event - Payments'],
+  prefix: "/payments",
+  tags: ["Event - Payments"],
 })
   .macro(authMacro)
   .get(
-    '/',
+    "/",
     async ({ params }) => {
       return await prisma.payment.findMany({
         where: {
@@ -48,17 +48,17 @@ export const payments = new Elysia({
     {
       auth: true,
       detail: {
-        summary: 'Get all active payments',
-        operationId: 'getAllEventPayments',
+        summary: "Get all active payments",
+        operationId: "getAllEventPayments",
       },
       response: t.Array(paymentSchema),
       params: t.Object({
-        eventId: t.String({ format: 'uuid' }),
+        eventId: t.String({ format: "uuid" }),
       }),
     }
   )
   .post(
-    '/',
+    "/",
     async ({ body }) => {
       return await prisma.payment.create({ data: body });
     },
@@ -67,16 +67,16 @@ export const payments = new Elysia({
       body: paymentBodySchema,
       response: paymentSchema,
       detail: {
-        summary: 'Create a new payment',
-        operationId: 'createEventPayment',
+        summary: "Create a new payment",
+        operationId: "createEventPayment",
       },
       params: t.Object({
-        eventId: t.String({ format: 'uuid' }),
+        eventId: t.String({ format: "uuid" }),
       }),
     }
   )
   .get(
-    '/:id',
+    "/:id",
     async ({ params, set }) => {
       const payment = await prisma.payment.findUnique({
         where: {
@@ -86,31 +86,31 @@ export const payments = new Elysia({
       });
       if (!payment || payment.deletedAt) {
         set.status = 404;
-        return { error: 'Payment not found' };
+        return { error: "Payment not found" };
       }
       return payment;
     },
     {
       params: t.Object({
-        id: t.String({ format: 'uuid' }),
-        eventId: t.String({ format: 'uuid' }),
+        id: t.String({ format: "uuid" }),
+        eventId: t.String({ format: "uuid" }),
       }),
       response: {
         200: paymentSchema,
         404: t.Object({
           error: t.String({
-            description: 'Error message',
+            description: "Error message",
           }),
         }),
       },
       detail: {
-        summary: 'Get a payment by ID',
-        operationId: 'getEventPaymentById',
+        summary: "Get a payment by ID",
+        operationId: "getEventPaymentById",
       },
     }
   )
   .put(
-    '/:id',
+    "/:id",
     async ({ params, body, set }) => {
       try {
         return await prisma.payment.update({
@@ -119,32 +119,32 @@ export const payments = new Elysia({
         });
       } catch {
         set.status = 404;
-        return { error: 'Payment not found' };
+        return { error: "Payment not found" };
       }
     },
     {
       auth: true,
       params: t.Object({
-        id: t.String({ format: 'uuid' }),
-        eventId: t.String({ format: 'uuid' }),
+        id: t.String({ format: "uuid" }),
+        eventId: t.String({ format: "uuid" }),
       }),
       body: t.Partial(paymentBodySchema),
       response: {
         200: paymentSchema,
         404: t.Object({
           error: t.String({
-            description: 'Error message',
+            description: "Error message",
           }),
         }),
       },
       detail: {
-        summary: 'Update a payment by ID',
-        operationId: 'updateEventPaymentById',
+        summary: "Update a payment by ID",
+        operationId: "updateEventPaymentById",
       },
     }
   )
   .delete(
-    '/:id',
+    "/:id",
     async ({ params, user, set }) => {
       try {
         await prisma.payment.update({
@@ -157,26 +157,31 @@ export const payments = new Elysia({
         set.status = 204;
       } catch {
         set.status = 404;
-        return { error: 'Payment not found' };
+        return { error: "Payment not found" };
       }
     },
     {
       auth: true,
       params: t.Object({
-        id: t.String({ format: 'uuid' }),
-        eventId: t.String({ format: 'uuid' }),
+        id: t.String({ format: "uuid" }),
+        eventId: t.String({ format: "uuid" }),
       }),
       response: {
         204: t.Void(),
         404: t.Object({
           error: t.String({
-            description: 'Error message',
+            description: "Error message",
           }),
         }),
       },
       detail: {
-        summary: 'Soft delete a payment by ID',
-        operationId: 'deleteEventPaymentById',
+        summary: "Soft delete a payment by ID",
+        operationId: "deleteEventPaymentById",
+      },
+      schema: {
+        detail: {
+          operationId: "deleteEventPaymentById",
+        },
       },
     }
   );

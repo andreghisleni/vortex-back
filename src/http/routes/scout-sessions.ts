@@ -1,48 +1,48 @@
-import Elysia, { t } from 'elysia';
-import { authMacro } from '~/auth';
-import { prisma } from '~/db/client';
+import Elysia, { t } from "elysia";
+import { authMacro } from "~/auth";
+import { prisma } from "~/db/client";
 
 // Schema para o tipo de sessão.
-const sessionTypeSchema = t.Union(
+export const sessionTypeSchema = t.Union(
   [
-    t.Literal('LOBINHO'),
-    t.Literal('ESCOTEIRO'),
-    t.Literal('SENIOR'),
-    t.Literal('PIONEIRO'),
-    t.Literal('OUTRO'),
+    t.Literal("LOBINHO"),
+    t.Literal("ESCOTEIRO"),
+    t.Literal("SENIOR"),
+    t.Literal("PIONEIRO"),
+    t.Literal("OUTRO"),
   ],
   {
-    description: 'Type of the scout session',
+    description: "Type of the scout session",
   }
 );
 
 // Schema para o modelo ScoutSession
 const scoutSessionSchema = t.Object({
   id: t.String({
-    format: 'uuid',
-    description: 'Unique identifier for the scout session',
+    format: "uuid",
+    description: "Unique identifier for the scout session",
   }),
   name: t.String({
-    description: 'Name of the scout session',
+    description: "Name of the scout session",
     minLength: 3,
   }),
   type: sessionTypeSchema,
   createdAt: t.Date({
-    description: 'Timestamp when the session was created',
+    description: "Timestamp when the session was created",
   }),
   updatedAt: t.Date({
-    description: 'Timestamp when the session was last updated',
+    description: "Timestamp when the session was last updated",
   }),
 });
 
 export const scoutSessions = new Elysia({
-  prefix: '/scout-sessions',
-  name: 'Scout Sessions',
-  tags: ['Scout Sessions'],
+  prefix: "/scout-sessions",
+  name: "Scout Sessions",
+  tags: ["Scout Sessions"],
 })
   .macro(authMacro)
   .get(
-    '/',
+    "/",
     async () => {
       const sessions = await prisma.scoutSession.findMany();
       return sessions;
@@ -50,9 +50,9 @@ export const scoutSessions = new Elysia({
     {
       auth: true,
       detail: {
-        tags: ['Scout Sessions'],
-        summary: 'Get all scout sessions',
-        operationId: 'getAllScoutSessions',
+        tags: ["Scout Sessions"],
+        summary: "Get all scout sessions",
+        operationId: "getAllScoutSessions",
       },
       response: {
         200: t.Array(scoutSessionSchema),
@@ -60,7 +60,7 @@ export const scoutSessions = new Elysia({
     }
   )
   .post(
-    '/',
+    "/",
     async ({ body }) => {
       // Removido o ownerId, pois não existe no novo modelo
       const session = await prisma.scoutSession.create({
@@ -70,15 +70,15 @@ export const scoutSessions = new Elysia({
     },
     {
       detail: {
-        tags: ['Scout Sessions'],
-        summary: 'Create a new scout session',
-        operationId: 'createScoutSession',
+        tags: ["Scout Sessions"],
+        summary: "Create a new scout session",
+        operationId: "createScoutSession",
       },
       auth: true,
       body: t.Object({
         name: t.String({
           minLength: 3,
-          description: 'Name of the scout session',
+          description: "Name of the scout session",
         }),
         type: sessionTypeSchema,
       }),
@@ -92,7 +92,7 @@ export const scoutSessions = new Elysia({
     }
   )
   .get(
-    '/:id',
+    "/:id",
     async ({ params, set }) => {
       const session = await prisma.scoutSession.findUnique({
         where: { id: params.id },
@@ -101,7 +101,7 @@ export const scoutSessions = new Elysia({
       if (!session) {
         set.status = 404;
         return {
-          error: 'Scout session not found',
+          error: "Scout session not found",
         };
       }
 
@@ -109,12 +109,12 @@ export const scoutSessions = new Elysia({
     },
     {
       detail: {
-        tags: ['Scout Sessions'],
-        summary: 'Get scout session by ID',
-        operationId: 'getScoutSessionById',
+        tags: ["Scout Sessions"],
+        summary: "Get scout session by ID",
+        operationId: "getScoutSessionById",
       },
       params: t.Object({
-        id: t.String({ format: 'uuid' }),
+        id: t.String({ format: "uuid" }),
       }),
       response: {
         200: scoutSessionSchema,
@@ -125,7 +125,7 @@ export const scoutSessions = new Elysia({
     }
   )
   .put(
-    '/:id',
+    "/:id",
     async ({ params, body, set }) => {
       try {
         const session = await prisma.scoutSession.update({
@@ -136,25 +136,25 @@ export const scoutSessions = new Elysia({
       } catch {
         set.status = 404;
         return {
-          error: 'Scout session not found or could not be updated',
+          error: "Scout session not found or could not be updated",
         };
       }
     },
     {
       detail: {
-        tags: ['Scout Sessions'],
-        summary: 'Update scout session by ID',
-        operationId: 'updateScoutSessionById',
+        tags: ["Scout Sessions"],
+        summary: "Update scout session by ID",
+        operationId: "updateScoutSessionById",
       },
       auth: true,
       params: t.Object({
-        id: t.String({ format: 'uuid' }),
+        id: t.String({ format: "uuid" }),
       }),
       body: t.Object({
         name: t.Optional(
           t.String({
             minLength: 3,
-            description: 'Name of the scout session',
+            description: "Name of the scout session",
           })
         ),
         type: t.Optional(sessionTypeSchema),
