@@ -1,13 +1,17 @@
-import Elysia, { t } from "elysia";
-import { z } from "zod/v4";
-import { authMacro } from "~/auth";
-import { prisma } from "~/db/client";
-import { sessionTypeSchema } from "../scout-sessions";
+import type { Prisma } from '@prisma/client';
+import Elysia, { t } from 'elysia';
+import { authMacro } from '~/auth';
+import { prisma } from '~/db/client';
+import { sessionTypeSchema } from '../scout-sessions';
+
+export const orderTypeSchema = t.Union([t.Literal('asc'), t.Literal('desc')], {
+  description: 'Type of the order',
+});
 
 // Schema do modelo Member (sem alterações)
 const memberSchema = t.Object({
-  id: t.String({ format: "uuid" }),
-  eventId: t.String({ format: "uuid" }),
+  id: t.String({ format: 'uuid' }),
+  eventId: t.String({ format: 'uuid' }),
   order: t.Nullable(t.Number()),
   visionId: t.Nullable(t.String()),
   name: t.String(),
@@ -16,43 +20,43 @@ const memberSchema = t.Object({
   isAllConfirmedButNotYetFullyPaid: t.Boolean(),
   session: t.Object({
     id: t.String({
-      format: "uuid",
-      description: "Unique identifier for the scout session",
+      format: 'uuid',
+      description: 'Unique identifier for the scout session',
     }),
     name: t.String({
-      description: "Name of the scout session",
+      description: 'Name of the scout session',
       minLength: 3,
     }),
     type: sessionTypeSchema,
     createdAt: t.Date({
-      description: "Timestamp when the session was created",
+      description: 'Timestamp when the session was created',
     }),
     updatedAt: t.Date({
-      description: "Timestamp when the session was last updated",
+      description: 'Timestamp when the session was last updated',
     }),
   }),
   createdAt: t.Date(),
   tickets: t.Array(
     t.Object({
-      id: t.String({ format: "uuid" }),
+      id: t.String({ format: 'uuid' }),
       number: t.Number(),
-      memberId: t.Nullable(t.String({ format: "uuid" })),
+      memberId: t.Nullable(t.String({ format: 'uuid' })),
       name: t.Nullable(t.String()),
       phone: t.Nullable(t.String()),
       description: t.Nullable(t.String()),
       deliveredAt: t.Nullable(t.Date()),
       returned: t.Boolean(),
       createdAt: t.Date(),
-      created: t.Union([t.Literal("ONTHELOT"), t.Literal("AFTERIMPORT")]),
-      eventId: t.String({ format: "uuid" }),
-      ticketRangeId: t.Nullable(t.String({ format: "uuid" })),
+      created: t.Union([t.Literal('ONTHELOT'), t.Literal('AFTERIMPORT')]),
+      eventId: t.String({ format: 'uuid' }),
+      ticketRangeId: t.Nullable(t.String({ format: 'uuid' })),
     })
   ),
 });
 
 // Schema para o corpo da criação: eventId foi REMOVIDO daqui
 const createMemberBodySchema = t.Object({
-  sessionId: t.String({ format: "uuid" }),
+  sessionId: t.String({ format: 'uuid' }),
   name: t.String(),
   order: t.Optional(t.Number()),
   visionId: t.Optional(t.String()),
@@ -61,7 +65,7 @@ const createMemberBodySchema = t.Object({
 
 // Schema para o corpo da atualização (sem alterações)
 const updateMemberBodySchema = t.Object({
-  sessionId: t.String({ format: "uuid" }),
+  sessionId: t.String({ format: 'uuid' }),
   name: t.String(),
   order: t.Optional(t.Number()),
   visionId: t.Optional(t.String()),
@@ -70,74 +74,97 @@ const updateMemberBodySchema = t.Object({
 
 // Schema para os parâmetros que agora incluem eventId
 const eventParamsSchema = t.Object({
-  eventId: t.String({ format: "uuid" }),
+  eventId: t.String({ format: 'uuid' }),
 });
 
 const memberParamsSchema = t.Object({
-  eventId: t.String({ format: "uuid" }),
-  id: t.String({ format: "uuid" }),
+  eventId: t.String({ format: 'uuid' }),
+  id: t.String({ format: 'uuid' }),
 });
 
 export const members = new Elysia({
-  prefix: "/members", // Este prefixo será adicionado ao prefixo do pai
-  tags: ["Event - Members"],
+  prefix: '/members', // Este prefixo será adicionado ao prefixo do pai
+  tags: ['Event - Members'],
 })
   .macro(authMacro)
   .get(
-    "/",
+    '/',
     async ({ params, query }) => {
       const orderBy = [
-        query.orderBy?.visionId && { visionId: query.orderBy.visionId },
-        query.orderBy?.name && { name: query.orderBy.name },
-        query.orderBy?.register && { register: query.orderBy.register },
-        query.orderBy?.["session-name"] && {
-          session: { name: query.orderBy["session-name"] },
+        query?.['ob.visionId'] && { visionId: query?.['ob.visionId'] },
+        query?.['ob.name'] && { name: query?.['ob.name'] },
+        query?.['ob.register'] && { register: query?.['ob.register'] },
+        query?.['ob.session-name'] && {
+          session: { name: query?.['ob.session-name'] },
         },
-        query.orderBy?.totalTickets && {
+        query?.['ob.totalTickets'] && {
           tickets: {
-            _count: query.orderBy.totalTickets,
+            _count: query?.['ob.totalTickets'],
           },
         },
 
-        query.orderBy?.tickets && {
+        query?.['ob.tickets'] && {
           tickets: {
-            _max: { number: query.orderBy.tickets },
+            _max: { number: query?.['ob.tickets'] },
           },
         },
       ];
+
+      const or = [
+        {
+          visionId: {
+            contains: query?.['f.filter'],
+            mode: 'insensitive',
+          },
+        },
+        {
+          name: {
+            contains: query?.['f.filter'],
+            mode: 'insensitive',
+          },
+        },
+        {
+          register: {
+            contains: query?.['f.filter'],
+            mode: 'insensitive',
+          },
+        },
+        {
+          tickets: Number.isNaN(Number.parseInt(query['f.filter'], 10))
+            ? undefined
+            : {
+              some: {
+                number: {
+                  equals: Number.parseInt(query['f.filter'], 10),
+                },
+              },
+            },
+        },
+        {},
+      ] satisfies Prisma.MemberWhereInput[];
+
       const [m, total] = await prisma.$transaction([
         prisma.member.findMany({
           where: {
             eventId: params.eventId,
-            name: query.filter?.name
-              ? {
-                  contains: query.filter.name,
-                  mode: "insensitive",
-                }
-              : undefined,
-            sessionId: query.filter?.sessionId,
+            sessionId: query?.['f.sessionId'],
+            OR: query?.['f.filter'] ? or : undefined,
           },
           include: {
             tickets: true,
             session: true,
           },
-          take: query.pagination?.pageSize ?? undefined,
+          take: query?.['p.pageSize'] ?? 20,
           skip:
-            ((query.pagination?.page ?? 1) - 1) *
-              (query.pagination?.pageSize ?? Number.MAX_SAFE_INTEGER) ||
+            ((query?.['p.page'] ?? 1) - 1) * (query?.['p.pageSize'] ?? 20) ||
             undefined,
           orderBy: [...orderBy.filter((o) => o !== undefined)],
         }),
         prisma.member.count({
           where: {
             eventId: params.eventId,
-            name: query.filter?.name
-              ? {
-                  contains: query.filter.name,
-                  mode: "insensitive",
-                }
-              : undefined,
-            sessionId: query.filter?.sessionId,
+            sessionId: query?.['f.sessionId'],
+            OR: query?.['f.filter'] ? or : undefined,
           },
         }),
       ]);
@@ -146,65 +173,45 @@ export const members = new Elysia({
         data: m,
         meta: {
           total,
-          page: query.pagination?.page ?? 1,
-          pageSize: query.pagination?.pageSize ?? total,
-          totalPages: Math.ceil(
-            total / ((query.pagination?.pageSize ?? total) || 1)
-          ),
+          page: query.p?.page ?? 1,
+          pageSize: query.p?.pageSize ?? 10,
+          totalPages: Math.ceil(total / ((query.p?.pageSize ?? 10) || 1)),
         },
       };
     },
     {
       auth: true,
       params: eventParamsSchema, // Usando o schema de parâmetros
-      query: z.object({
-        filter: z
-          .object(
-            {
-              name: z
-                .string(
-                  "Filter by member name (case insensitive, partial match)"
-                )
-                .optional(),
-              sessionId: z
-                .uuid("Filter by session ID")
-                .describe("Filter by session ID")
-                .optional(),
-            },
-            "Query parameters for filtering members"
-          )
-          .optional(),
-        pagination: z
-          .object(
-            {
-              page: z.number("Page number").min(1).default(1).optional(),
-              pageSize: z
-                .number("Page size")
-                .min(1)
-                .max(100)
-                .default(20)
-                .optional(),
-            },
-            "Pagination parameters"
-          )
-          .optional(),
-        orderBy: z
-          .object(
-            {
-              visionId: z.enum(["asc", "desc"], "Order direction").optional(),
-              name: z.enum(["asc", "desc"], "Order direction").optional(),
-              register: z.enum(["asc", "desc"], "Order direction").optional(),
-              "session-name": z
-                .enum(["asc", "desc"], "Order direction")
-                .optional(),
-              totalTickets: z
-                .enum(["asc", "desc"], "Order direction")
-                .optional(),
-              tickets: z.enum(["asc", "desc"], "Order direction").optional(),
-            },
-            "Ordering parameters"
-          )
-          .optional(),
+      query: t.Object({
+        'f.filter': t.Optional(
+          t.String({
+            description:
+              'Filter by member filter on visionId, name register, or tickets',
+          })
+        ),
+        'f.sessionId': t.Optional(
+          t.String({
+            description: 'Filter by session ID',
+          })
+        ),
+        'p.page': t.Optional(
+          t.Number({
+            description: 'Page number',
+            default: 1,
+          })
+        ),
+        'p.pageSize': t.Optional(
+          t.Number({
+            description: 'Page size',
+            default: 20,
+          })
+        ),
+        'ob.visionId': t.Optional(orderTypeSchema),
+        'ob.name': t.Optional(orderTypeSchema),
+        'ob.register': t.Optional(orderTypeSchema),
+        'ob.totalTickets': t.Optional(orderTypeSchema),
+        'ob.tickets': t.Optional(orderTypeSchema),
+        'ob.session-name': t.Optional(orderTypeSchema),
       }),
       response: t.Object({
         data: t.Array(memberSchema),
@@ -216,13 +223,13 @@ export const members = new Elysia({
         }),
       }),
       detail: {
-        summary: "Get all members for a specific event",
-        operationId: "getEventMembers",
+        summary: 'Get all members for a specific event',
+        operationId: 'getEventMembers',
       },
     }
   )
   .post(
-    "/",
+    '/',
     async ({ params, body }) => {
       const cleanName = body.name.trim().toLowerCase();
       // Adicionamos o eventId dos parâmetros da URL aos dados
@@ -244,13 +251,13 @@ export const members = new Elysia({
       body: createMemberBodySchema,
       response: memberSchema,
       detail: {
-        summary: "Create a new member for a specific event",
-        operationId: "createEventMember",
+        summary: 'Create a new member for a specific event',
+        operationId: 'createEventMember',
       },
     }
   )
   .get(
-    "/:id",
+    '/:id',
     async ({ params, set }) => {
       // Buscamos o membro garantindo que ele pertence ao evento correto
       const member = await prisma.member.findUnique({
@@ -266,7 +273,7 @@ export const members = new Elysia({
 
       if (!member) {
         set.status = 404;
-        return { error: "Member not found in this event" };
+        return { error: 'Member not found in this event' };
       }
       return member;
     },
@@ -276,18 +283,18 @@ export const members = new Elysia({
         200: memberSchema,
         404: t.Object({
           error: t.String({
-            description: "Error message",
+            description: 'Error message',
           }),
         }),
       },
       detail: {
-        summary: "Get a member by ID for a specific event",
-        operationId: "getEventMemberById",
+        summary: 'Get a member by ID for a specific event',
+        operationId: 'getEventMemberById',
       },
     }
   )
   .put(
-    "/:id",
+    '/:id',
     async ({ params, body, set }) => {
       try {
         // Atualizamos garantindo o escopo do evento
@@ -308,7 +315,7 @@ export const members = new Elysia({
         });
       } catch {
         set.status = 404;
-        return { error: "Member not found in this event" };
+        return { error: 'Member not found in this event' };
       }
     },
     {
@@ -319,13 +326,13 @@ export const members = new Elysia({
         200: memberSchema,
         404: t.Object({
           error: t.String({
-            description: "Error message",
+            description: 'Error message',
           }),
         }),
       },
       detail: {
-        summary: "Update a member by ID for a specific event",
-        operationId: "updateEventMemberById",
+        summary: 'Update a member by ID for a specific event',
+        operationId: 'updateEventMemberById',
       },
     }
   );

@@ -1,8 +1,6 @@
 import cors from "@elysiajs/cors";
-import openapi from "@elysiajs/openapi";
 import swagger from "@elysiajs/swagger";
 import { Elysia } from "elysia";
-import { z } from "zod/v4";
 import { auth } from "~/auth";
 import { env } from "~/env";
 import { tracing } from "~/tracing";
@@ -21,23 +19,23 @@ const app = new Elysia()
       allowedHeaders: ["Content-Type", "Authorization"],
     })
   )
-  .use(
-    openapi({
-      path: "/docs",
-      documentation: {
-        info: {
-          title: "Vortex API",
-          version: "1.0.0",
-        },
-      },
-      mapJsonSchema: {
-        zod: z.toJSONSchema,
-      },
-    })
-  )
+  // .use(
+  //   openapi({
+  //     path: "/docs",
+  //     documentation: {
+  //       info: {
+  //         title: "Vortex API",
+  //         version: "1.0.0",
+  //       },
+  //     },
+  //     mapJsonSchema: {
+  //       zod: z.toJSONSchema,
+  //     },
+  //   })
+  // )
   .use(
     swagger({
-      path: "/docs2",
+      path: "/docs",
       documentation: {
         info: {
           title: "Vortex API",

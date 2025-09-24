@@ -1,5 +1,10 @@
 {
-  "cSpell.words": ["Elysia", "elysiajs", "opentelemetry", "otlp"],
+  "cSpell.words": [
+    "Elysia",
+    "elysiajs",
+    "opentelemetry",
+    "otlp"
+  ],
   "emmet.showExpandedAbbreviation": "never",
   "editor.defaultFormatter": "biomejs.biome",
   "[javascript][typescript][javascriptreact][typescriptreact][json][jsonc][css][graphql]": {
