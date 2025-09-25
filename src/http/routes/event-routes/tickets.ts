@@ -1,6 +1,7 @@
 import Elysia, { t } from 'elysia';
 import { authMacro } from '~/auth';
 import { prisma } from '~/db/client';
+import { sessionTypeSchema } from '../scout-sessions';
 
 // Schema para o enum TicketCreated
 const ticketCreatedSchema = t.Union([
@@ -13,6 +14,34 @@ const ticketSchema = t.Object({
   id: t.String({ format: 'uuid' }),
   number: t.Number(),
   memberId: t.Nullable(t.String({ format: 'uuid' })),
+  member: t.Nullable(t.Object({
+    id: t.String({ format: 'uuid' }),
+    eventId: t.String({ format: 'uuid' }),
+    order: t.Nullable(t.Number()),
+    visionId: t.Nullable(t.String()),
+    name: t.String(),
+    cleanName: t.String(),
+    register: t.Nullable(t.String()),
+    isAllConfirmedButNotYetFullyPaid: t.Boolean(),
+    session: t.Object({
+      id: t.String({
+        format: 'uuid',
+        description: 'Unique identifier for the scout session',
+      }),
+      name: t.String({
+        description: 'Name of the scout session',
+        minLength: 3,
+      }),
+      type: sessionTypeSchema,
+      createdAt: t.Date({
+        description: 'Timestamp when the session was created',
+      }),
+      updatedAt: t.Date({
+        description: 'Timestamp when the session was last updated',
+      }),
+    }),
+    createdAt: t.Date(),
+  })),
   name: t.Nullable(t.String()),
   phone: t.Nullable(t.String()),
   description: t.Nullable(t.String()),
@@ -48,6 +77,13 @@ export const tickets = new Elysia({
     async ({ params }) => {
       return await prisma.ticket.findMany({
         where: { eventId: params.eventId },
+        include: {
+          member: {
+            include: {
+              session: true,
+            }
+          }
+        }
       });
     },
     {
@@ -67,6 +103,13 @@ export const tickets = new Elysia({
     async ({ body, params }) => {
       return await prisma.ticket.create({
         data: { ...body, eventId: params.eventId },
+        include: {
+          member: {
+            include: {
+              session: true,
+            }
+          }
+        }
       });
     },
     {
@@ -87,6 +130,13 @@ export const tickets = new Elysia({
     async ({ params, set }) => {
       const ticket = await prisma.ticket.findUnique({
         where: { id: params.id },
+        include: {
+          member: {
+            include: {
+              session: true,
+            }
+          }
+        }
       });
       if (!ticket || ticket.eventId !== params.eventId) {
         set.status = 404;
@@ -120,6 +170,13 @@ export const tickets = new Elysia({
         return await prisma.ticket.update({
           where: { id: params.id },
           data: body,
+          include: {
+            member: {
+              include: {
+                session: true,
+              }
+            }
+          },
         });
       } catch {
         set.status = 404;
