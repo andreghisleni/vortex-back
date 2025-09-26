@@ -1,4 +1,5 @@
 import Elysia from "elysia";
+import { getExportDataRoute } from "./get-export-data-route";
 import { members } from "./members";
 import { payments } from "./payments";
 import { ticketRanges } from "./ticket-ranges";
@@ -12,4 +13,5 @@ export const event = new Elysia({
   .use(members)
   .use(ticketRanges)
   .use(tickets)
-  .use(payments);
+  .use(payments)
+  .use(getExportDataRoute);
