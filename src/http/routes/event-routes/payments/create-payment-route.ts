@@ -23,12 +23,12 @@ export const createPaymentRoute = new Elysia()
   .macro(authMacro)
   .post(
     '/',
-    async ({ body, set }) => {
+    async ({ body, params, set }) => {
       const member = await prisma.member.findUnique({
         where: { id: body.memberId },
       });
 
-      if (!member || member.eventId !== body.eventId) {
+      if (!member || member.eventId !== params.eventId) {
         set.status = 400;
         return { error: 'Member does not belong to the specified event' };
       }

@@ -1,6 +1,8 @@
 import Elysia, { t } from 'elysia';
 import { authMacro } from '~/auth';
 import { prisma } from '~/db/client';
+import { sessionTypeSchema } from '../../scout-sessions';
+import { paymentTypeSchema } from '../payments/get-payment-route';
 
 export const orderTypeSchema = t.Union([t.Literal('asc'), t.Literal('desc')], {
   description: 'Type of the order',
@@ -16,40 +18,52 @@ const memberSchema = t.Object({
   cleanName: t.String(),
   register: t.Nullable(t.String()),
   isAllConfirmedButNotYetFullyPaid: t.Boolean(),
-  // session: t.Object({
-  //   id: t.String({
-  //     format: 'uuid',
-  //     description: 'Unique identifier for the scout session',
-  //   }),
-  //   name: t.String({
-  //     description: 'Name of the scout session',
-  //     minLength: 3,
-  //   }),
-  //   type: sessionTypeSchema,
-  //   createdAt: t.Date({
-  //     description: 'Timestamp when the session was created',
-  //   }),
-  //   updatedAt: t.Date({
-  //     description: 'Timestamp when the session was last updated',
-  //   }),
-  // }),
+  session: t.Object({
+    id: t.String({
+      format: 'uuid',
+      description: 'Unique identifier for the scout session',
+    }),
+    name: t.String({
+      description: 'Name of the scout session',
+      minLength: 3,
+    }),
+    type: sessionTypeSchema,
+    createdAt: t.Date({
+      description: 'Timestamp when the session was created',
+    }),
+    updatedAt: t.Date({
+      description: 'Timestamp when the session was last updated',
+    }),
+  }),
   createdAt: t.Date(),
-  // tickets: t.Array(
-  //   t.Object({
-  //     id: t.String({ format: 'uuid' }),
-  //     number: t.Number(),
-  //     memberId: t.Nullable(t.String({ format: 'uuid' })),
-  //     name: t.Nullable(t.String()),
-  //     phone: t.Nullable(t.String()),
-  //     description: t.Nullable(t.String()),
-  //     deliveredAt: t.Nullable(t.Date()),
-  //     returned: t.Boolean(),
-  //     createdAt: t.Date(),
-  //     created: t.Union([t.Literal('ONTHELOT'), t.Literal('AFTERIMPORT')]),
-  //     eventId: t.String({ format: 'uuid' }),
-  //     ticketRangeId: t.Nullable(t.String({ format: 'uuid' })),
-  //   })
-  // ),
+  tickets: t.Array(
+    t.Object({
+      id: t.String({ format: 'uuid' }),
+      number: t.Number(),
+      memberId: t.Nullable(t.String({ format: 'uuid' })),
+      name: t.Nullable(t.String()),
+      phone: t.Nullable(t.String()),
+      description: t.Nullable(t.String()),
+      deliveredAt: t.Nullable(t.Date()),
+      returned: t.Boolean(),
+      createdAt: t.Date(),
+      created: t.Union([t.Literal('ONTHELOT'), t.Literal('AFTERIMPORT')]),
+      eventId: t.String({ format: 'uuid' }),
+      ticketRangeId: t.Nullable(t.String({ format: 'uuid' })),
+    })
+  ),
+  payments: t.Array(t.Object({
+    id: t.String({ format: 'uuid' }),
+    visionId: t.Nullable(t.String()),
+    amount: t.Number(),
+    type: paymentTypeSchema,
+    payedAt: t.Date(),
+    memberId: t.String({ format: 'uuid' }),
+    createdAt: t.Date(),
+    updatedAt: t.Date(),
+    deletedAt: t.Nullable(t.Date()),
+    deletedBy: t.Nullable(t.String()),
+  }))
 });
 
 const memberParamsSchema = t.Object({
@@ -67,6 +81,11 @@ export const getMemberRoute = new Elysia()
         where: {
           id: params.id,
           eventId: params.eventId, // Garante segurança e escopo correto
+        },
+        include: {
+          session: true,
+          tickets: true,
+          payments: true,
         },
       });
 

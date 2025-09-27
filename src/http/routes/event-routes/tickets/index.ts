@@ -3,6 +3,7 @@ import { createTicketRoute } from './create-ticket-route';
 import { deleteTicketRoute } from './delete-ticket-route';
 import { getTicketRoute } from './get-ticket-route';
 import { getTicketsRoute } from './get-tickets-route';
+import { toggleReturnedTicketRoute } from './toggle-returned-ticket-route';
 import { updateTicketRoute } from './update-ticket-route';
 
 export const tickets = new Elysia({
@@ -13,4 +14,5 @@ export const tickets = new Elysia({
   .use(getTicketsRoute)
   .use(getTicketRoute)
   .use(updateTicketRoute)
-  .use(deleteTicketRoute);
+  .use(deleteTicketRoute)
+  .use(toggleReturnedTicketRoute);

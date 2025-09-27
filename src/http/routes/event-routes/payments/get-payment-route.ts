@@ -3,7 +3,7 @@ import { authMacro } from '~/auth';
 import { prisma } from '~/db/client';
 
 // Schema para o enum PaymentType
-const paymentTypeSchema = t.Union([t.Literal('CASH'), t.Literal('PIX')]);
+export const paymentTypeSchema = t.Union([t.Literal('CASH'), t.Literal('PIX')]);
 
 // Schema para o modelo Payment
 const paymentSchema = t.Object({
