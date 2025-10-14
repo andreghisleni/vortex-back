@@ -69,13 +69,11 @@ export const getTicketsRoute = new Elysia()
     '/',
     async ({ params, query }) => {
       const orderBy = [
-        query?.['ob.number'] && { number: query?.['ob.number'] },
-        query?.['ob.name'] && { name: query?.['ob.name'] },
-        query?.['ob.phone'] && { phone: query?.['ob.phone'] },
+        query?.['ob.member.name'] && { member: { name: query?.['ob.member.name'] } },
         query?.['ob.deliveredAt'] && { deliveredAt: query?.['ob.deliveredAt'] },
         query?.['ob.returned'] && { returned: query?.['ob.returned'] },
-        query?.['ob.created'] && { created: query?.['ob.created'] },
-        query?.['ob.createdAt'] ? { createdAt: query?.['ob.createdAt'] } : { createdAt: 'desc' },
+        query?.['ob.createdAt'] && { createdAt: query?.['ob.createdAt'] },
+        query?.['ob.number'] ? { number: query?.['ob.number'] } : { number: 'asc' },
       ];
 
       const orFilters: Prisma.TicketWhereInput[] = [
@@ -190,11 +188,9 @@ export const getTicketsRoute = new Elysia()
           })
         ),
         'ob.number': t.Optional(orderTypeSchema),
-        'ob.name': t.Optional(orderTypeSchema),
-        'ob.phone': t.Optional(orderTypeSchema),
+        'ob.member.name': t.Optional(orderTypeSchema),
         'ob.deliveredAt': t.Optional(orderTypeSchema),
         'ob.returned': t.Optional(orderTypeSchema),
-        'ob.created': t.Optional(orderTypeSchema),
         'ob.createdAt': t.Optional(orderTypeSchema),
       }),
       response: t.Object({
@@ -208,7 +204,7 @@ export const getTicketsRoute = new Elysia()
       }),
       detail: {
         summary: 'Get all tickets for a specific event',
-        operationId: 'getAllEventTickets',
+        operationId: 'getEventTickets',
       },
     }
   );

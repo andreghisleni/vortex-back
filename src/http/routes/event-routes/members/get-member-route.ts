@@ -85,7 +85,11 @@ export const getMemberRoute = new Elysia()
         include: {
           session: true,
           tickets: true,
-          payments: true,
+          payments: {
+            where: {
+              deletedAt: null, // Exclui pagamentos deletados
+            }
+          },
         },
       });
 
