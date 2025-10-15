@@ -14,6 +14,18 @@ export const toggleReturnedTicketRoute = new Elysia()
     '/:id/toggle-returned',
     async ({ params, set }) => {
       try {
+        // Verifica se o evento existe e se está em modo somente leitura
+        const event = await prisma.event.findUnique({ where: { id: params.eventId } });
+        if (!event) {
+          set.status = 404;
+          return { error: 'Event not found' };
+        }
+
+        if (event.readOnly) {
+          set.status = 403;
+          return { error: 'Event is read-only' };
+        }
+
         // Verifica se o ticket pertence ao evento correto antes de atualizar
         const existingTicket = await prisma.ticket.findUnique({
           where: { id: params.id },
@@ -42,6 +54,11 @@ export const toggleReturnedTicketRoute = new Elysia()
       response: {
         201: t.Void({
           description: 'Ticket updated successfully',
+        }),
+        403: t.Object({
+          error: t.String({
+            description: 'Event is read-only',
+          }),
         }),
         404: t.Object({
           error: t.String({

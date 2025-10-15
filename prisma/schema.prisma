@@ -38,6 +38,8 @@ model User {
 
   payments Payment[]
 
+  performedTicketFlows TicketFlow[]
+
   @@map("users")
 }
 
@@ -102,9 +104,16 @@ model Event {
   ownerId String?
   owner   User?   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
 
-  members Member[]
-  ticketRanges TicketRange[]
-  tickets  Ticket[]
+  members         Member[]
+  oldTicketRanges TicketRange[]
+  tickets         Ticket[]
+  ticketFlows     TicketFlow[]
+
+  ticketRanges EventTicketRange[]
+
+  autoGenerateTicketsTotalPerMember Int? @map("auto_generate_tickets_total_per_member")
+
+  readOnly Boolean @default(false) @map("read_only")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -115,6 +124,27 @@ model Event {
 enum EventTicketType {
   SINGLE_NUMERATION
   MULTIPLE_NUMERATIONS
+}
+
+model EventTicketRange {
+  id String @id @default(uuid())
+
+  type String
+
+  start Int
+  end   Int
+
+  eventId String @map("event_id")
+  event   Event  @relation(fields: [eventId], references: [id])
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  // alocações por membro para este ticket range
+  memberAllocations MemberTicketAllocation[]
+
+  @@map("event_ticket_ranges")
 }
 
 model ScoutSession {
@@ -146,7 +176,7 @@ model Member {
   eventId String @map("event_id")
   event   Event  @relation(fields: [eventId], references: [id])
 
-  order     Int?
+  order Int?
 
   visionId  String? @map("vision_id")
   name      String
@@ -155,14 +185,17 @@ model Member {
 
   isAllConfirmedButNotYetFullyPaid Boolean @default(false) @map("is_all_confirmed_but_not_yet_fully_paid")
 
-  sessionId String  @map("session_id")
+  sessionId String       @map("session_id")
   session   ScoutSession @relation(fields: [sessionId], references: [id])
 
   createdAt DateTime @default(now()) @map("created_at")
 
-  tickets        Ticket[]
-  ticketRanges   TicketRange[]
-  payments Payment[]
+  tickets      Ticket[]
+  ticketRanges TicketRange[]
+  payments     Payment[]
+  
+  // quantidades de ingressos alocadas por member por EventTicketRange
+  ticketAllocations MemberTicketAllocation[]
 
   @@map("members")
 }
@@ -214,6 +247,8 @@ model Ticket {
   ticketRangeId String?      @map("ticket_range_id")
   ticketRange   TicketRange? @relation(fields: [ticketRangeId], references: [id])
 
+  flows TicketFlow[]
+
   @@map("tickets")
 }
 
@@ -249,4 +284,61 @@ model Payment {
 enum PaymentType {
   CASH
   PIX
+}
+
+// Controle de estoque físico de ingressos
+// Tipos de ações realizadas sobre um ticket (histórico/fluxo)
+enum TicketFlowType {
+  CREATED
+  ASSIGNED
+  DETACHED
+  RETURNED
+  SOLD
+  CHECKED_IN
+}
+
+model TicketFlow {
+  id String @id @default(uuid())
+
+  ticketId String? @map("ticket_id")
+  ticket   Ticket? @relation(fields: [ticketId], references: [id])
+
+  eventId String @map("event_id")
+  event   Event  @relation(fields: [eventId], references: [id])
+
+  type TicketFlowType
+
+  // membro envolvido (de quem veio / para quem foi)
+  fromMemberId String? @map("from_member_id")
+  toMemberId   String? @map("to_member_id")
+
+  // usuário que realizou a ação (opcional)
+  performedBy     String? @map("performed_by")
+  performedByUser User?   @relation(fields: [performedBy], references: [id])
+
+  note String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("ticket_flows")
+}
+
+// Quantidade de ingressos alocadas por membro por tipo de EventTicketRange
+model MemberTicketAllocation {
+  id String @id @default(uuid())
+
+  memberId String @map("member_id")
+  member   Member @relation(fields: [memberId], references: [id])
+
+  eventTicketRangeId String @map("event_ticket_range_id")
+  eventTicketRange   EventTicketRange @relation(fields: [eventTicketRangeId], references: [id])
+
+  // quantidade de tickets alocados desse tipo para o membro
+  quantity Int @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([memberId, eventTicketRangeId])
+  @@map("member_ticket_allocations")
 }

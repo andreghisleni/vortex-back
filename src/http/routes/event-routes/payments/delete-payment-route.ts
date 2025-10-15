@@ -14,6 +14,18 @@ export const deletePaymentRoute = new Elysia()
     '/:id',
     async ({ params, user, set }) => {
       try {
+        // Verifica se o evento existe e se não está em modo somente leitura
+        const event = await prisma.event.findUnique({ where: { id: params.eventId } });
+        if (!event) {
+          set.status = 404;
+          return { error: 'Event not found' };
+        }
+
+        if (event.readOnly) {
+          set.status = 403;
+          return { error: 'Event is read-only' };
+        }
+
         // Verifica se o pagamento pertence ao evento correto antes de deletar
         const existingPayment = await prisma.payment.findUnique({
           where: {

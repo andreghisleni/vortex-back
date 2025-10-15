@@ -31,6 +31,15 @@ export const createTicketRoute = new Elysia()
   .post(
     '/',
     async ({ body, params, set }) => {
+      const event = await prisma.event.findUnique({ where: { id: params.eventId } });
+      if (!event) {
+        set.status = 404;
+        return { error: 'Event not found' };
+      }
+      if (event.readOnly) {
+        set.status = 403;
+        return { error: 'Event is read-only' };
+      }
       // Verifica se o ticket number já existe para o evento
       const existingTicket = await prisma.ticket.findFirst({
         where: {

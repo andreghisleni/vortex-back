@@ -22,6 +22,18 @@ export const updateMemberRoute = new Elysia()
     '/:id',
     async ({ params, body, set }) => {
       try {
+        // Verifica se o evento existe e se não está em modo somente leitura
+        const event = await prisma.event.findUnique({ where: { id: params.eventId } });
+        if (!event) {
+          set.status = 404;
+          return { error: 'Event not found' };
+        }
+
+        if (event.readOnly) {
+          set.status = 403;
+          return { error: 'Event is read-only' };
+        }
+
         // Atualizamos garantindo o escopo do evento
         // O Prisma vai dar erro se o registro com `id` E `eventId` não for encontrado
         await prisma.member.update({
