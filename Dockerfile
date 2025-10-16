@@ -47,6 +47,8 @@ COPY --from=build /app/node_modules/@prisma ./node_modules/@prisma
 
 ENV NODE_ENV=production
 
+RUN bun db:g
+
 CMD ["./server"]
 
 EXPOSE 3000
