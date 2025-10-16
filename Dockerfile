@@ -7,6 +7,9 @@ COPY package.json package.json
 COPY bun.lock bun.lock
 
 RUN bun install
+
+COPY ./prisma ./prisma
+
 RUN bun db:g
 RUN bun db:m:d
 
