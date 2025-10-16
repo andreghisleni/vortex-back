@@ -2,8 +2,8 @@ FROM oven/bun AS build
 
 WORKDIR /app
 
-# Install OpenSSL and ca-certificates for Prisma
-RUN apt-get update -y && apt-get install -y openssl ca-certificates
+# Install OpenSSL for Prisma
+RUN apt-get update -y && apt-get install -y openssl
 
 # Cache packages installation
 COPY package.json package.json
@@ -34,20 +34,15 @@ RUN bun build ./src/http/index.ts \
 	--minify-syntax \
 	--outfile server
 
-FROM debian:bullseye-slim
+FROM gcr.io/distroless/base
 
 WORKDIR /app
 
-# Install OpenSSL and ca-certificates in final image
-RUN apt-get update -y && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
-
 COPY --from=build /app/server server
-COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=build /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=build /app/prisma ./prisma
+COPY --from=build /app/node_modules ./node_modules
 
 ENV NODE_ENV=production
-
-RUN bun db:g
 
 CMD ["./server"]
 
