@@ -24,6 +24,9 @@ RUN bun db:m:d
 
 COPY ./src ./src
 
+
+RUN bun install
+
 ENV NODE_ENV=production
 
 RUN bun build ./src/http/index.ts \
