@@ -34,13 +34,22 @@ RUN bun build ./src/http/index.ts \
 	--minify-syntax \
 	--outfile server
 
-FROM gcr.io/distroless/base
+FROM debian:bullseye-slim
 
 WORKDIR /app
 
+# Install required system libraries for Prisma
+RUN apt-get update -y && \
+    apt-get install -y \
+    openssl \
+    ca-certificates \
+    libgcc-s1 \
+    libc6 \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=build /app/server server
-COPY --from=build /app/prisma ./prisma
-COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=build /app/node_modules/@prisma ./node_modules/@prisma
 
 ENV NODE_ENV=production
 
