@@ -39,13 +39,11 @@ export const eventSchema = t.Object({
     description: "Timestamp when the event was last updated",
   }),
   ticketRanges: t.Array(
-    t.Nullable(
-      t.Object({
-        id: t.String({ format: "uuid" }),
-        start: t.Number(),
-        end: t.Number(),
-        type: t.String(),
-      })
-    )
+    t.Object({
+      id: t.String({ format: "uuid" }),
+      start: t.Number(),
+      end: t.Number(),
+      type: t.String(),
+    })
   ),
 });

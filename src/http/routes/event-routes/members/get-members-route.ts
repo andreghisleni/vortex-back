@@ -52,6 +52,12 @@ const memberSchema = t.Object({
       ticketRangeId: t.Nullable(t.String({ format: 'uuid' })),
     })
   ),
+
+  ticketAllocations: t.Array(t.Object({
+    id: t.String({ format: 'uuid' }),
+    eventTicketRangeId: t.String({ format: 'uuid' }),
+    quantity: t.Number(),
+  })),
 });
 
 // Schema para os parâmetros que agora incluem eventId
@@ -128,6 +134,7 @@ export const getMembersRoute = new Elysia()
           include: {
             tickets: true,
             session: true,
+            ticketAllocations: true,
           },
           take: query?.['p.pageSize'] ?? 20,
           skip:

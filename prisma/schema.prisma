@@ -143,6 +143,7 @@ model EventTicketRange {
 
   // alocações por membro para este ticket range
   memberAllocations MemberTicketAllocation[]
+  tickets           Ticket[]
 
   @@map("event_ticket_ranges")
 }
@@ -193,7 +194,7 @@ model Member {
   tickets      Ticket[]
   ticketRanges TicketRange[]
   payments     Payment[]
-  
+
   // quantidades de ingressos alocadas por member por EventTicketRange
   ticketAllocations MemberTicketAllocation[]
 
@@ -244,8 +245,11 @@ model Ticket {
   eventId String @map("event_id")
   event   Event  @relation(fields: [eventId], references: [id])
 
-  ticketRangeId String?      @map("ticket_range_id")
-  ticketRange   TicketRange? @relation(fields: [ticketRangeId], references: [id])
+  oTicketRangeId String?      @map("o_ticket_range_id")
+  oTicketRange   TicketRange? @relation(fields: [oTicketRangeId], references: [id])
+
+  ticketRangeId String?           @map("ticket_range_id")
+  ticketRange   EventTicketRange? @relation(fields: [ticketRangeId], references: [id])
 
   flows TicketFlow[]
 
@@ -330,7 +334,7 @@ model MemberTicketAllocation {
   memberId String @map("member_id")
   member   Member @relation(fields: [memberId], references: [id])
 
-  eventTicketRangeId String @map("event_ticket_range_id")
+  eventTicketRangeId String           @map("event_ticket_range_id")
   eventTicketRange   EventTicketRange @relation(fields: [eventTicketRangeId], references: [id])
 
   // quantidade de tickets alocados desse tipo para o membro

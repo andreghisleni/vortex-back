@@ -21,6 +21,26 @@ export const createEventRoute = new Elysia().macro(authMacro).post(
         ticketRanges: true,
       }
     });
+    // Após criar o evento e os ticketRanges, recarregue os ranges do banco para garantir IDs persistidos
+    const ranges = await prisma.eventTicketRange.findMany({ where: { eventId: event.id, deletedAt: null } });
+
+    // Criar todos os tickets dentro dos ranges (sem atribuir a membros ainda)
+    const ticketsToCreate: { number: number; eventId: string; ticketRangeId: string }[] = [];
+    for (const r of ranges) {
+      for (let n = r.start; n <= r.end; n++) {
+        ticketsToCreate.push({ number: n, eventId: event.id, ticketRangeId: r.id });
+      }
+    }
+
+    if (ticketsToCreate.length > 0) {
+      // createMany pode ser grande, mas é a forma mais rápida de pré-popular os tickets
+      await prisma.ticket.createMany({ data: ticketsToCreate, skipDuplicates: true });
+    }
+
+    // Não atribuímos tickets a membros no momento da criação do evento.
+    // Apenas pré-criamos os números (tickets) para os ranges. A atribuição pode ocorrer depois,
+    // quando os membros forem criados e as alocações estiverem disponíveis.
+
     return event;
   },
   {
