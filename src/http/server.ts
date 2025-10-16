@@ -13,7 +13,7 @@ const app = new Elysia()
   .use(tracing)
   .use(
     cors({
-      origin: "http://localhost:5173",
+      origin: env.BETTER_AUTH_URL,
       methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
       credentials: true,
       allowedHeaders: ["Content-Type", "Authorization"],
