@@ -20,6 +20,7 @@ ARG DATABASE_URL
 # Set environment variable for Prisma
 ENV DATABASE_URL=$DATABASE_URL
 
+# Generate Prisma client with correct binary targets
 RUN bun db:g
 RUN bun db:m:d
 
