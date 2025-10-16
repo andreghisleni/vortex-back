@@ -8,6 +8,7 @@ RUN apt-get update -y && apt-get install -y openssl
 # Cache packages installation
 COPY package.json package.json
 COPY bun.lock bun.lock
+COPY tsconfig.json tsconfig.json
 
 RUN bun install
 
@@ -24,8 +25,6 @@ RUN bun db:m:d
 
 COPY ./src ./src
 
-
-RUN bun install
 
 ENV NODE_ENV=production
 
