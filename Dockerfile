@@ -2,6 +2,9 @@ FROM oven/bun AS build
 
 WORKDIR /app
 
+# Install OpenSSL for Prisma
+RUN apt-get update -y && apt-get install -y openssl
+
 # Cache packages installation
 COPY package.json package.json
 COPY bun.lock bun.lock
@@ -9,6 +12,12 @@ COPY bun.lock bun.lock
 RUN bun install
 
 COPY ./prisma ./prisma
+
+# Declare build args
+ARG DATABASE_URL
+
+# Set environment variable for Prisma
+ENV DATABASE_URL=$DATABASE_URL
 
 RUN bun db:g
 RUN bun db:m:d
