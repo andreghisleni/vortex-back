@@ -8,6 +8,7 @@
     "lint": "biome format --write",
     "db:g": "prisma generate",
     "db:m": "prisma migrate dev",
+    "db:m:d": "prisma migrate deploy",
     "db:s": "prisma studio",
     "db:seed": "bun run prisma/seed.ts"
   },
