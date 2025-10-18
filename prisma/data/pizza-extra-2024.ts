@@ -15018,3 +15018,5 @@ export const tickets = [
     returned: false,
   },
 ];
+
+export default { members, tickets }
