@@ -69,6 +69,9 @@ export const createEventRoute = new Elysia().macro(authMacro).post(
           start: t.Number(),
           end: t.Number(),
           type: t.String(),
+          cost: t.Number({
+            description: 'Cost of tickets in this range',
+          })
         }),
         {
           description: 'The ticket ranges for the event',

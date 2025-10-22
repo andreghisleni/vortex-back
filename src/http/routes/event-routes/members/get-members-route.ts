@@ -3,6 +3,7 @@ import Elysia, { t } from 'elysia';
 import { authMacro } from '~/auth';
 import { prisma } from '~/db/client';
 import { sessionTypeSchema } from '../../scout-sessions';
+import { paymentTypeSchema } from '../payments/get-payment-route';
 
 export const orderTypeSchema = t.Union([t.Literal('asc'), t.Literal('desc')], {
   description: 'Type of the order',
@@ -58,6 +59,18 @@ const memberSchema = t.Object({
     eventTicketRangeId: t.String({ format: 'uuid' }),
     quantity: t.Number(),
   })),
+  payments: t.Array(t.Object({
+    id: t.String({ format: 'uuid' }),
+    visionId: t.Nullable(t.String()),
+    amount: t.Number(),
+    type: paymentTypeSchema,
+    payedAt: t.Date(),
+    memberId: t.String({ format: 'uuid' }),
+    createdAt: t.Date(),
+    updatedAt: t.Date(),
+    deletedAt: t.Nullable(t.Date()),
+    deletedBy: t.Nullable(t.String()),
+  }))
 });
 
 // Schema para os parâmetros que agora incluem eventId
@@ -135,6 +148,11 @@ export const getMembersRoute = new Elysia()
             tickets: true,
             session: true,
             ticketAllocations: true,
+            payments: {
+              where: {
+                deletedAt: null,
+              }
+            }
           },
           take: query?.['p.pageSize'] ?? 20,
           skip:

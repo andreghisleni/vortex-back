@@ -135,6 +135,8 @@ model EventTicketRange {
   start Int
   end   Int
 
+  cost Float?
+
   eventId String @map("event_id")
   event   Event  @relation(fields: [eventId], references: [id])
 

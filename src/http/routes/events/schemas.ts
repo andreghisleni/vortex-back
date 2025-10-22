@@ -44,6 +44,7 @@ export const eventSchema = t.Object({
       start: t.Number(),
       end: t.Number(),
       type: t.String(),
+      cost: t.Nullable(t.Number()),
     })
   ),
 });
