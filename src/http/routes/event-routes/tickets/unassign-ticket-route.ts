@@ -10,7 +10,9 @@ const paramsSchema = t.Object({
 export const unassignTicketRoute = new Elysia().macro(authMacro).post(
   "/:ticketId/unassign",
   async ({ params, set, user }) => {
-    const event = await prisma.event.findUnique({ where: { id: params.eventId } });
+    const event = await prisma.event.findUnique({
+      where: { id: params.eventId },
+    });
     if (!event) {
       set.status = 404;
       return { error: "Event not found" };
@@ -20,7 +22,9 @@ export const unassignTicketRoute = new Elysia().macro(authMacro).post(
       return { error: "Event is read-only" };
     }
 
-    const ticket = await prisma.ticket.findUnique({ where: { id: params.ticketId } });
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: params.ticketId },
+    });
     if (!ticket || ticket.eventId !== params.eventId) {
       set.status = 404;
       return { error: "Ticket not found for this event" };
@@ -35,8 +39,24 @@ export const unassignTicketRoute = new Elysia().macro(authMacro).post(
 
     // executar desvinculação: limpar memberId e allocationId; se estava devolvido, limpar returned
     await prisma.$transaction([
-      prisma.ticket.update({ where: { id: ticket.id }, data: { memberId: null, allocationId: null, returned: false } }),
-      prisma.ticketFlow.create({ data: { ticketId: ticket.id, eventId: params.eventId, type: "DETACHED", fromMemberId: ticket.memberId, toMemberId: null, performedBy: user?.id ?? null } }),
+      prisma.ticket.update({
+        where: { id: ticket.id },
+        data: {
+          memberId: null,
+          allocationId: null,
+          returned: false,
+        },
+      }),
+      prisma.ticketFlow.create({
+        data: {
+          ticketId: ticket.id,
+          eventId: params.eventId,
+          type: "DETACHED",
+          fromMemberId: ticket.memberId,
+          toMemberId: null,
+          performedBy: user?.id ?? null,
+        },
+      }),
     ]);
 
     set.status = 200;
@@ -51,6 +71,9 @@ export const unassignTicketRoute = new Elysia().macro(authMacro).post(
       403: t.Object({ error: t.String() }),
       404: t.Object({ error: t.String() }),
     },
-    detail: { summary: "Unassign a ticket from its member", operationId: "unassignTicket" },
+    detail: {
+      summary: "Unassign a ticket from its member",
+      operationId: "unassignTicket",
+    },
   }
 );

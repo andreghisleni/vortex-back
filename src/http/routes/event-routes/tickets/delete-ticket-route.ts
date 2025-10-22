@@ -1,6 +1,7 @@
 import Elysia, { t } from "elysia";
 import { authMacro } from "~/auth";
-import { prisma } from "~/db/client";
+
+// import { prisma } from "~/db/client";
 
 // Schema para os parâmetros que incluem eventId e id
 const ticketParamsSchema = t.Object({
@@ -10,7 +11,7 @@ const ticketParamsSchema = t.Object({
 
 export const deleteTicketRoute = new Elysia().macro(authMacro).delete(
   "/:id",
-  ({ params, set }) => {
+  ({ set }) => {
     set.status = 400;
     return { error: "You can`t delete a ticket" };
 
