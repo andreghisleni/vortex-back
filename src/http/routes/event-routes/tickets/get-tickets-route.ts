@@ -113,8 +113,6 @@ export const getTicketsRoute = new Elysia()
         });
       }
 
-      console.log(query)
-
       const [tickets, total] = await prisma.$transaction([
         prisma.ticket.findMany({
           where: {
