@@ -46,15 +46,35 @@ export const generateTicketsRoute = new Elysia().macro(authMacro).post(
       return { error: "No members found for this event" };
     }
 
-    // Usar as alocações que já vêm dos membros
-    const allocationsByMember: Record<string, Record<string, number>> = {};
-    for (const member of members) {
-      allocationsByMember[member.id] = {};
-      for (const allocation of member.ticketAllocations) {
-        allocationsByMember[member.id][allocation.eventTicketRangeId] =
-          allocation.quantity;
-      }
-    }
+    // Buscar alocações com deficit (quantity > linked_count) e ordenadas por members.order asc
+    const allocations = (await prisma.$queryRaw`
+      SELECT
+        a.id AS allocation_id,
+        a.member_id,
+        a.event_ticket_range_id,
+        a.quantity,
+        COALESCE(linked.linked_count, 0) AS linked_count,
+        (a.quantity - COALESCE(linked.linked_count, 0)) AS deficit,
+        m.order AS member_order
+      FROM member_ticket_allocations a
+      JOIN members m ON m.id = a.member_id
+      LEFT JOIN LATERAL (
+        SELECT count(1) AS linked_count
+        FROM tickets t
+        WHERE t.allocation_id = a.id
+      ) linked ON true
+      WHERE m.event_id = ${params.eventId}
+        AND a.quantity > COALESCE(linked.linked_count, 0)
+      ORDER BY m.order ASC
+    `) as Array<{
+      allocation_id: string;
+      member_id: string;
+      event_ticket_range_id: string;
+      quantity: number;
+      linked_count: number;
+      deficit: number;
+      member_order: number;
+    }>;
 
     // Pré-buscar números já criados para todos os ranges de uma vez
     const ticketsExisting = await prisma.ticket.findMany({
@@ -107,66 +127,49 @@ export const generateTicketsRoute = new Elysia().macro(authMacro).post(
     )[] = [];
     let assignedCount = 0;
 
-    for (const range of ranges) {
-      const pool = unassignedByRange[range.id] ?? [];
+    // Iterar pelas alocações com deficit e consumir os pools de tickets não vinculados por range
+    for (const alloc of allocations) {
+      const pool = unassignedByRange[alloc.event_ticket_range_id] ?? [];
       if (pool.length === 0) {
         continue;
       }
 
-      // determinar quantidades por membro para esse range
-      const perMemberQuantities: number[] = [];
-      if (event.autoGenerateTicketsTotalPerMember != null) {
-        for (const _m of members) {
-          perMemberQuantities.push(
-            event.autoGenerateTicketsTotalPerMember as number
-          );
-        }
-      } else {
-        for (const m of members) {
-          perMemberQuantities.push(allocationsByMember[m.id]?.[range.id] ?? 0);
-        }
+      const need = Number(alloc.deficit) || 0;
+      if (need <= 0) {
+        continue;
       }
 
-      // atribuir tickets do pool seguindo a ordem dos membros
-      let idx = 0;
-      for (let i = 0; i < members.length && idx < pool.length; i++) {
-        const qty = perMemberQuantities[i] || 0;
-        if (qty <= 0) {
-          continue;
-        }
-        const slice = pool.slice(idx, idx + qty);
-        if (slice.length === 0) {
-          break;
-        }
+      const slice = pool.splice(0, need);
+      if (slice.length === 0) {
+        continue;
+      }
 
-        const ids = slice.map((s) => s.id);
-        // update tickets to assign to member
+      const ids = slice.map((s) => s.id);
+      // atualizar tickets: atribuir memberId e linkar allocationId
+      ops.push(
+        prisma.ticket.updateMany({
+          where: { id: { in: ids } },
+          data: { memberId: alloc.member_id, allocationId: alloc.allocation_id },
+        })
+      );
+
+      // criar flows ASSIGNED para cada ticket atribuído
+      for (const s of slice) {
         ops.push(
-          prisma.ticket.updateMany({
-            where: { id: { in: ids } },
-            data: { memberId: members[i].id },
+          prisma.ticketFlow.create({
+            data: {
+              ticketId: s.id,
+              eventId: params.eventId,
+              type: "ASSIGNED",
+              fromMemberId: null,
+              toMemberId: alloc.member_id,
+              performedBy: user?.id ?? null,
+            },
           })
         );
-
-        // criar flows ASSIGNED para cada ticket atribuído, incluindo performedBy quando disponível
-        for (const s of slice) {
-          ops.push(
-            prisma.ticketFlow.create({
-              data: {
-                ticketId: s.id,
-                eventId: params.eventId,
-                type: "ASSIGNED",
-                fromMemberId: null,
-                toMemberId: members[i].id,
-                performedBy: user?.id ?? null,
-              },
-            })
-          );
-        }
-
-        assignedCount += slice.length;
-        idx += slice.length;
       }
+
+      assignedCount += slice.length;
     }
 
     // Executar todas as operações em uma única transação para atomicidade

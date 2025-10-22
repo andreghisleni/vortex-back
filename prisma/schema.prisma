@@ -252,6 +252,9 @@ model Ticket {
   ticketRangeId String?           @map("ticket_range_id")
   ticketRange   EventTicketRange? @relation(fields: [ticketRangeId], references: [id])
 
+  allocationId String?                 @map("allocation_id")
+  allocation   MemberTicketAllocation? @relation(fields: [allocationId], references: [id])
+
   flows TicketFlow[]
 
   @@map("tickets")
@@ -343,6 +346,7 @@ model MemberTicketAllocation {
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+  tickets   Ticket[]
 
   @@unique([memberId, eventTicketRangeId])
   @@map("member_ticket_allocations")
