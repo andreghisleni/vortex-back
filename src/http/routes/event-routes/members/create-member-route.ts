@@ -41,24 +41,24 @@ export const createMemberRoute = new Elysia()
       const cleanName = body.name.trim().toLowerCase();
 
       // Busca os ticket ranges do evento para validação quando necessário
-      const ranges = await prisma.eventTicketRange.findMany({ where: { eventId: params.eventId, deletedAt: null } });
+      // const ranges = await prisma.eventTicketRange.findMany({ where: { eventId: params.eventId, deletedAt: null } });
 
-      // Se o evento não tem autoGenerateTicketsTotalPerMember, ticketAllocations é obrigatório e deve conter uma entrada por range
-      if (event.autoGenerateTicketsTotalPerMember == null) {
-        const bodyRecord = body as Record<string, unknown>;
-        const allocations = (bodyRecord.ticketAllocations as unknown) as { eventTicketRangeId: string; quantity: number }[] | undefined;
-        if (!Array.isArray(allocations)) {
-          set.status = 400;
-          return { error: 'ticketAllocations is required when event.autoGenerateTicketsTotalPerMember is not set' };
-        }
+      // // Se o evento não tem autoGenerateTicketsTotalPerMember, ticketAllocations é obrigatório e deve conter uma entrada por range
+      // if (event.autoGenerateTicketsTotalPerMember == null) {
+      //   const bodyRecord = body as Record<string, unknown>;
+      //   const allocations = (bodyRecord.ticketAllocations as unknown) as { eventTicketRangeId: string; quantity: number }[] | undefined;
+      //   if (!Array.isArray(allocations)) {
+      //     set.status = 400;
+      //     return { error: 'ticketAllocations is required when event.autoGenerateTicketsTotalPerMember is not set' };
+      //   }
 
-        const rangeIds = ranges.map((r) => r.id).sort();
-        const providedIds = allocations.map((a) => a.eventTicketRangeId).sort();
-        if (rangeIds.length !== providedIds.length || JSON.stringify(rangeIds) !== JSON.stringify(providedIds)) {
-          set.status = 400;
-          return { error: 'ticketAllocations must include one entry for each ticket range of the event' };
-        }
-      }
+      //   const rangeIds = ranges.map((r) => r.id).sort();
+      //   const providedIds = allocations.map((a) => a.eventTicketRangeId).sort();
+      //   if (rangeIds.length !== providedIds.length || JSON.stringify(rangeIds) !== JSON.stringify(providedIds)) {
+      //     set.status = 400;
+      //     return { error: 'ticketAllocations must include one entry for each ticket range of the event' };
+      //   }
+      // }
 
       // Adicionamos o eventId dos parâmetros da URL aos dados
       const created = await prisma.member.create({
