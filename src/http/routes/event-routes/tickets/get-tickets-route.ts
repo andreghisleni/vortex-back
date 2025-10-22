@@ -113,11 +113,13 @@ export const getTicketsRoute = new Elysia()
         });
       }
 
+      console.log(query)
+
       const [tickets, total] = await prisma.$transaction([
         prisma.ticket.findMany({
           where: {
             eventId: params.eventId,
-            memberId: query?.['f.memberId'],
+            memberId: query?.['f.noMemberId'] ? null : query?.['f.memberId'],
             returned: query?.['f.returned'] !== undefined ? query?.['f.returned'] === 'true' : undefined,
             OR: query?.['f.filter'] ? orFilters : undefined,
           },
@@ -137,7 +139,7 @@ export const getTicketsRoute = new Elysia()
         prisma.ticket.count({
           where: {
             eventId: params.eventId,
-            memberId: query?.['f.memberId'],
+            memberId: query?.['f.noMemberId'] ? null : query?.['f.memberId'],
             returned: query?.['f.returned'] !== undefined ? query?.['f.returned'] === 'true' : undefined,
             OR: query?.['f.filter'] ? orFilters : undefined,
           },
@@ -165,9 +167,16 @@ export const getTicketsRoute = new Elysia()
           })
         ),
         'f.memberId': t.Optional(
-          t.String({
-            description: 'Filter by member ID',
-            format: 'uuid',
+          t.Nullable(
+            t.String({
+              description: 'Filter by member ID',
+              format: 'uuid',
+            })
+          )
+        ),
+        'f.noMemberId': t.Optional(
+          t.Boolean({
+            description: 'Filter has no member ID',
           })
         ),
         'f.returned': t.Optional(
