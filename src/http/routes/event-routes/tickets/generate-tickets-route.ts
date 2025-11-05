@@ -2,9 +2,14 @@ import Elysia, { t } from "elysia";
 import { authMacro } from "~/auth";
 import { prisma } from "~/db/client";
 
-const eventParamsSchema = t.Object({
-  eventId: t.String({ format: "uuid" }),
-});
+const eventParamsSchema = t.Object(
+  {
+    eventId: t.String({ format: "uuid" }),
+  },
+  {
+    description: "Parameters including eventId",
+  }
+);
 
 export const generateTicketsRoute = new Elysia().macro(authMacro).post(
   "/generate",
@@ -149,7 +154,10 @@ export const generateTicketsRoute = new Elysia().macro(authMacro).post(
       ops.push(
         prisma.ticket.updateMany({
           where: { id: { in: ids } },
-          data: { memberId: alloc.member_id, allocationId: alloc.allocation_id },
+          data: {
+            memberId: alloc.member_id,
+            allocationId: alloc.allocation_id,
+          },
         })
       );
 
@@ -184,11 +192,23 @@ export const generateTicketsRoute = new Elysia().macro(authMacro).post(
     auth: true,
     params: eventParamsSchema,
     response: {
-      201: t.Object({ assigned: t.Number() }),
-      200: t.Object({ message: t.String() }),
-      400: t.Object({ error: t.String() }),
-      403: t.Object({ error: t.String() }),
-      404: t.Object({ error: t.String() }),
+      201: t.Object(
+        { assigned: t.Number() },
+        { description: "Tickets generated and assigned successfully" }
+      ),
+      200: t.Object(
+        { message: t.String() },
+        { description: "No unassigned tickets available" }
+      ),
+      400: t.Object(
+        { error: t.String() },
+        { description: "Bad request - missing ranges or members" }
+      ),
+      403: t.Object(
+        { error: t.String() },
+        { description: "Event is read-only" }
+      ),
+      404: t.Object({ error: t.String() }, { description: "Event not found" }),
     },
     detail: {
       summary: "Generate tickets for an event based on ranges and allocations",

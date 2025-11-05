@@ -83,7 +83,7 @@ export const createEventRoute = new Elysia().macro(authMacro).post(
       200: eventSchema,
       404: t.Object({
         error: t.String(),
-      }),
+      }, { description: "Creation failed" }),
     },
   }
 );

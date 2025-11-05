@@ -40,10 +40,10 @@ export const users = new Elysia({
         }),
       }),
       response: {
-        201: t.Void(),
+        201: t.Void({ description: "User last event updated successfully" }),
         400: t.Object({
           error: t.String(),
-        }),
+        }, { description: "Event not found" }),
       },
     }
   );

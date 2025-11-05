@@ -23,7 +23,7 @@ export const getEventsRoute = new Elysia().macro(authMacro).get(
       operationId: "getAllEvents",
     },
     response: {
-      200: t.Array(eventSchema),
+      200: t.Array(eventSchema, { description: "List of all events" }),
     },
   }
 );

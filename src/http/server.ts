@@ -1,6 +1,6 @@
 import cors from "@elysiajs/cors";
 import swagger from "@elysiajs/swagger";
-import { Elysia } from "elysia";
+import { Elysia, t } from "elysia";
 import { auth } from "~/auth";
 import { env } from "~/env";
 import { tracing } from "~/tracing";
@@ -51,7 +51,16 @@ const app = new Elysia()
   .use(scoutSessions)
   .use(users)
   .use(event)
-  .get("/", () => "Hello Elysia")
+  .get("/", () => "Hello Elysia", {
+    detail: {
+      summary: "API Health Check",
+      description: "Returns a simple greeting to verify the API is running",
+      operationId: "healthCheck",
+    },
+    response: {
+      200: t.String({ description: "API greeting message" }),
+    },
+  })
   .listen({
     hostname: "0.0.0.0",
     port: env.PORT,

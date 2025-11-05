@@ -29,8 +29,8 @@ export const updateEventRoute = new Elysia().macro(authMacro).put(
       readOnly: t.Optional(t.Boolean()),
     }),
     response: {
-      201: t.Void(),
-      404: t.Object({ error: t.String() }),
+      201: t.Void({ description: "Event updated successfully" }),
+      404: t.Object({ error: t.String() }, { description: "Event not found" }),
     },
     detail: {
       tags: ['Events'],

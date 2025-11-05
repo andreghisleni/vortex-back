@@ -4,10 +4,15 @@ import { authMacro } from "~/auth";
 // import { prisma } from "~/db/client";
 
 // Schema para os parâmetros que incluem eventId e id
-const ticketParamsSchema = t.Object({
-  eventId: t.String({ format: "uuid" }),
-  id: t.String({ format: "uuid" }),
-});
+const ticketParamsSchema = t.Object(
+  {
+    eventId: t.String({ format: "uuid" }),
+    id: t.String({ format: "uuid" }),
+  },
+  {
+    description: "Parameters including eventId and ticket id",
+  }
+);
 
 export const deleteTicketRoute = new Elysia().macro(authMacro).delete(
   "/:id",
@@ -50,11 +55,16 @@ export const deleteTicketRoute = new Elysia().macro(authMacro).delete(
     params: ticketParamsSchema,
     response: {
       204: t.Void(),
-      404: t.Object({
-        error: t.String({
-          description: "Error message",
-        }),
-      }),
+      404: t.Object(
+        {
+          error: t.String({
+            description: "Error message",
+          }),
+        },
+        {
+          description: "Ticket not found in this event",
+        }
+      ),
     },
     detail: {
       summary: "Delete a ticket by ID for a specific event",

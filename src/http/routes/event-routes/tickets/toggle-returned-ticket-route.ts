@@ -59,12 +59,12 @@ export const toggleReturnedTicketRoute = new Elysia()
           error: t.String({
             description: 'Event is read-only',
           }),
-        }),
+        }, { description: "Event is read-only" }),
         404: t.Object({
           error: t.String({
             description: 'Error message',
           }),
-        }),
+        }, { description: "Ticket not found" }),
       },
       detail: {
         summary: 'Toggle the returned status of a ticket by ID for a specific event',

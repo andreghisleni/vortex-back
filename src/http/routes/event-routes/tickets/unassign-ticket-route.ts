@@ -2,10 +2,15 @@ import Elysia, { t } from "elysia";
 import { authMacro } from "~/auth";
 import { prisma } from "~/db/client";
 
-const paramsSchema = t.Object({
-  eventId: t.String({ format: "uuid" }),
-  ticketId: t.String({ format: "uuid" }),
-});
+const paramsSchema = t.Object(
+  {
+    eventId: t.String({ format: "uuid" }),
+    ticketId: t.String({ format: "uuid" }),
+  },
+  {
+    description: "Parameters including eventId and ticketId",
+  }
+);
 
 export const unassignTicketRoute = new Elysia().macro(authMacro).post(
   "/:ticketId/unassign",
@@ -66,10 +71,13 @@ export const unassignTicketRoute = new Elysia().macro(authMacro).post(
     auth: true,
     params: paramsSchema,
     response: {
-      200: t.Object({ success: t.Boolean(), wasReturned: t.Boolean() }),
-      400: t.Object({ error: t.String() }),
-      403: t.Object({ error: t.String() }),
-      404: t.Object({ error: t.String() }),
+      200: t.Object(
+        { success: t.Boolean(), wasReturned: t.Boolean() },
+        { description: "Ticket unassigned successfully" }
+      ),
+      400: t.Object({ error: t.String() }, { description: "Bad Request" }),
+      403: t.Object({ error: t.String() }, { description: "Forbidden" }),
+      404: t.Object({ error: t.String() }, { description: "Not Found" }),
     },
     detail: {
       summary: "Unassign a ticket from its member",

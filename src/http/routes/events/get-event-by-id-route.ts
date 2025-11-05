@@ -35,7 +35,7 @@ export const getEventByIdRoute = new Elysia()
         200: eventSchema,
         404: t.Object({
           error: t.String(),
-        }),
+        }, { description: "Event not found" }),
       },
     }
   );

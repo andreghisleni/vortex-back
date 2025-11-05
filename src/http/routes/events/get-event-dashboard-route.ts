@@ -150,10 +150,10 @@ export const getEventDashboardRoute = new Elysia()
           totalMembers: t.Number(),
           totalTicketRangeToGenerate: t.Number(),
           totalNumbersToGenerate: t.Number(),
-        }),
+        }, { description: "Event dashboard data" }),
         404: t.Object({
           error: t.String(),
-        }),
+        }, { description: "Event not found" }),
       },
     }
   );
