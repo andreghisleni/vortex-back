@@ -20,6 +20,7 @@ export const getEventDashboardRoute = new Elysia()
       // Reuse existing dashboard logic from previous monolith
       const [
         totalTickets,
+        totalTicketsLinkedToMembers,
         totalWithoutCritica,
         totalDeliveredTickets,
         totalTicketsAfterImport,
@@ -31,21 +32,48 @@ export const getEventDashboardRoute = new Elysia()
         totalValuePayedTicketsOnLastWeek,
         membersWithPizzaAndPaymentData,
         totalMembers,
-        ticketRanges,
+        ticketEventRanges,
+        ticketEventRangesLinkedToMembers,
       ] = await prisma.$transaction([
         prisma.ticket.count({ where: { eventId: params.id } }),
-        prisma.ticket.count({ where: { eventId: params.id, returned: false } }),
-        prisma.ticket.count({ where: { eventId: params.id, deliveredAt: { not: null } } }),
-        prisma.ticket.count({ where: { eventId: params.id, created: 'AFTERIMPORT' } }),
-        prisma.ticket.count({ where: { eventId: params.id, returned: true } }),
-        prisma.ticket.count({ where: { eventId: params.id, returned: true, deliveredAt: { not: null } } }),
-        prisma.ticket.count({ where: { eventId: params.id, returned: false, number: { gte: 0, lte: 1000 } } }),
-        prisma.ticket.count({ where: { eventId: params.id, returned: false, number: { gte: 2000, lte: 3000 } } }),
+        prisma.ticket.count({ where: { eventId: params.id, memberId: { not: null } } }),
+        prisma.ticket.count({ where: { eventId: params.id, returned: false, memberId: { not: null } } }),
+        prisma.ticket.count({ where: { eventId: params.id, deliveredAt: { not: null }, memberId: { not: null } } }),
+        prisma.ticket.count({ where: { eventId: params.id, created: 'AFTERIMPORT', memberId: { not: null } } }),
+        prisma.ticket.count({ where: { eventId: params.id, returned: true, memberId: { not: null } } }),
+        prisma.ticket.count({ where: { eventId: params.id, returned: true, deliveredAt: { not: null }, memberId: { not: null } } }),
+        prisma.ticket.count({ where: { eventId: params.id, returned: false, number: { gte: 0, lte: 1000 }, memberId: { not: null } } }),
+        prisma.ticket.count({ where: { eventId: params.id, returned: false, number: { gte: 2000, lte: 3000 }, memberId: { not: null } } }),
         prisma.payment.findMany({ where: { member: { eventId: params.id }, deletedAt: null } }),
         prisma.payment.findMany({ where: { member: { eventId: params.id }, deletedAt: null, payedAt: { gte: new Date(new Date().setDate(new Date().getDate() - 7)), lte: new Date() } } }),
         prisma.member.findMany({ where: { eventId: params.id, tickets: { some: { returned: false } } }, include: { tickets: { select: { number: true }, where: { returned: false } }, payments: { select: { amount: true }, where: { deletedAt: null } } } }),
         prisma.member.count({ where: { eventId: params.id } }),
-        prisma.ticketRange.findMany({ where: { eventId: params.id, generatedAt: null, deletedAt: null } }),
+        prisma.eventTicketRange.findMany({
+          where: { eventId: params.id },
+          select: {
+            type: true,
+            _count: {
+              select: {
+                tickets: true,
+              }
+            }
+          }
+        }),
+        prisma.eventTicketRange.findMany({
+          where: { eventId: params.id },
+          select: {
+            type: true,
+            _count: {
+              select: {
+                tickets: {
+                  where: {
+                    memberId: { not: null },
+                  }
+                },
+              }
+            }
+          }
+        }),
       ]);
 
       const totalValue = totalValuePayedTickets.reduce((acc, ticket) => acc + ticket.amount, 0);
@@ -85,19 +113,9 @@ export const getEventDashboardRoute = new Elysia()
 
       const possibleTotalTicketsData = processedMembers.filter((m) => m.isPaidOff || (!m.isPaidOff && m.isAllConfirmedButNotYetFullyPaid)).reduce((acc, member) => ({ totalTickets: acc.totalTickets + member.totalPizzasOrdered, calabresa: acc.calabresa + member.calabresaPizzas, mista: acc.mista + member.mistaPizzas }), { totalTickets: 0, calabresa: 0, mista: 0 });
 
-      const numbers: number[] = [];
-      for (const ticketRange of ticketRanges) {
-        if (ticketRange.end) {
-          for (let i = ticketRange.start; i <= ticketRange.end; i++) {
-            numbers.push(i);
-          }
-        } else {
-          numbers.push(ticketRange.start);
-        }
-      }
-
       return {
         totalTickets,
+        totalTicketsLinkedToMembers,
         totalWithoutCritica,
         totalDeliveredTickets,
         totalTicketsAfterImport,
@@ -115,8 +133,14 @@ export const getEventDashboardRoute = new Elysia()
         totalPredictedCalabresa: possibleTotalTicketsData.calabresa,
         totalPredictedMista: possibleTotalTicketsData.mista,
         totalMembers,
-        totalTicketRangeToGenerate: ticketRanges.length,
-        totalNumbersToGenerate: numbers.length,
+        totalTicketsPerRange: ticketEventRanges.map((range) => ({
+          type: range.type,
+          ticketCount: range._count.tickets,
+        })),
+        totalTicketsPerRangeLinkedToMembers: ticketEventRangesLinkedToMembers.map((range) => ({
+          type: range.type,
+          ticketCount: range._count.tickets,
+        })),
       };
     },
     {
@@ -131,6 +155,7 @@ export const getEventDashboardRoute = new Elysia()
       response: {
         200: t.Object({
           totalTickets: t.Number(),
+          totalTicketsLinkedToMembers: t.Number(),
           totalWithoutCritica: t.Number(),
           totalDeliveredTickets: t.Number(),
           totalTicketsAfterImport: t.Number(),
@@ -148,8 +173,14 @@ export const getEventDashboardRoute = new Elysia()
           totalPredictedCalabresa: t.Number(),
           totalPredictedMista: t.Number(),
           totalMembers: t.Number(),
-          totalTicketRangeToGenerate: t.Number(),
-          totalNumbersToGenerate: t.Number(),
+          totalTicketsPerRange: t.Array(t.Object({
+            type: t.String(),
+            ticketCount: t.Number(),
+          })),
+          totalTicketsPerRangeLinkedToMembers: t.Array(t.Object({
+            type: t.String(),
+            ticketCount: t.Number(),
+          })),
         }, { description: "Event dashboard data" }),
         404: t.Object({
           error: t.String(),
