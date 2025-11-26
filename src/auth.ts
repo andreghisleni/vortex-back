@@ -1,31 +1,31 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: <explanation> */
 
-import { SES, type SendEmailCommandInput } from '@aws-sdk/client-ses';
-import { fromEnv } from '@aws-sdk/credential-providers';
-import { betterAuth } from 'better-auth';
-import { prismaAdapter } from 'better-auth/adapters/prisma';
-import { admin, openAPI } from 'better-auth/plugins';
+import { SES, type SendEmailCommandInput } from "@aws-sdk/client-ses";
+import { fromEnv } from "@aws-sdk/credential-providers";
+import { betterAuth } from "better-auth";
+import { prismaAdapter } from "better-auth/adapters/prisma";
+import { admin, bearer, openAPI } from "better-auth/plugins";
 
-import { renderToStaticMarkup } from 'react-dom/server';
-import { prisma } from './db/client';
-import { ResetPasswordEmail } from './emails/reset-password';
-import { env } from './env';
+import { renderToStaticMarkup } from "react-dom/server";
+import { prisma } from "./db/client";
+import { ResetPasswordEmail } from "./emails/reset-password";
+import { env } from "./env";
 
 const ses = new SES({
-  credentials: process.env.NODE_ENV === 'production' ? fromEnv() : undefined,
-  region: 'us-east-2',
+  credentials: process.env.NODE_ENV === "production" ? fromEnv() : undefined,
+  region: "us-east-2",
 });
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
-    provider: 'postgresql',
+    provider: "postgresql",
   }),
   emailAndPassword: {
     enabled: true,
     // requireEmailVerification: true,
     async sendResetPassword(data) {
       // biome-ignore lint/suspicious/noConsole: <explanation>
-      console.log('Reset password link:', data);
+      console.log("Reset password link:", data);
 
       const html = renderToStaticMarkup(
         ResetPasswordEmail({
@@ -37,20 +37,20 @@ export const auth = betterAuth({
       );
 
       await ses.sendEmail({
-        Source: 'envio@andreg.com.br',
+        Source: "envio@andreg.com.br",
         Destination: {
           ToAddresses: [data.user.email],
         },
         Message: {
           Body: {
             Html: {
-              Charset: 'UTF-8',
+              Charset: "UTF-8",
               Data: html,
             },
           },
           Subject: {
-            Charset: 'UTF-8',
-            Data: 'Verify your email address',
+            Charset: "UTF-8",
+            Data: "Verify your email address",
           },
         },
       } satisfies SendEmailCommandInput);
@@ -58,9 +58,15 @@ export const auth = betterAuth({
       await Promise.resolve();
     },
   },
-  plugins: [admin(), openAPI()],
-  basePath: '/api',
-  trustedOrigins: ['http://localhost:5173'],
+  plugins: [
+    admin(),
+    openAPI(),
+    // bearer({
+    //   requireSignature: true,
+    // }),
+  ],
+  basePath: "/api",
+  trustedOrigins: ["http://localhost:5173"],
   advanced: {
     database: {
       generateId: false,
@@ -69,15 +75,15 @@ export const auth = betterAuth({
   user: {
     additionalFields: {
       image: {
-        type: 'string',
+        type: "string",
         required: false,
       },
       lastUserEventId: {
-        type: 'string',
+        type: "string",
         required: false,
         input: true,
         returned: true,
-        description: 'ID of the last event the user interacted with',
+        description: "ID of the last event the user interacted with",
       },
     },
   },
@@ -88,7 +94,7 @@ let _schema: ReturnType<typeof auth.api.generateOpenAPISchema>;
 const getSchema = async () => (_schema ??= auth.api.generateOpenAPISchema());
 
 export const OpenAPI = {
-  getPaths: (prefix = '/auth/api') =>
+  getPaths: (prefix = "/auth/api") =>
     getSchema().then(({ paths }) => {
       const reference: typeof paths = Object.create(null);
 
@@ -99,7 +105,7 @@ export const OpenAPI = {
         for (const method of Object.keys(paths[path])) {
           const operation = (reference[key] as any)[method];
 
-          operation.tags = ['Better Auth'];
+          operation.tags = ["Better Auth"];
         }
       }
 
@@ -114,6 +120,8 @@ export const authMacro = {
       const session = await auth.api.getSession({
         headers,
       });
+
+      console.log("Headers:", headers);
 
       // biome-ignore lint/style/useBlockStatements: <explanation>
       if (!session) return status(401);
