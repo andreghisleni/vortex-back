@@ -1,5 +1,6 @@
 import Elysia from 'elysia';
 import { assignTicketRoute } from './assign-ticket-route';
+import { checkInTicketRoute } from './check-in-ticket-route';
 import { createTicketRoute } from './create-ticket-route';
 import { deleteTicketRoute } from './delete-ticket-route';
 import { generateTicketsRoute } from './generate-tickets-route';
@@ -21,4 +22,5 @@ export const tickets = new Elysia({
   .use(toggleReturnedTicketRoute)
   .use(generateTicketsRoute)
   .use(assignTicketRoute)
-  .use(unassignTicketRoute);
+  .use(unassignTicketRoute)
+  .use(checkInTicketRoute);
