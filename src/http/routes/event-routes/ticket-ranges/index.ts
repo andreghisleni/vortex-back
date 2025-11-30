@@ -2,6 +2,7 @@ import Elysia from 'elysia';
 import { createTicketRangeRoute } from './create-ticket-range-route';
 import { getTicketRangeRoute } from './get-ticket-range-route';
 import { getTicketRangesRoute } from './get-ticket-ranges-route';
+import { updateEventTicketRangeRoute } from './update-event-ticket-range-route';
 import { updateTicketRangeRoute } from './update-ticket-range-route';
 
 export const ticketRanges = new Elysia({
@@ -12,4 +13,5 @@ export const ticketRanges = new Elysia({
   .use(createTicketRangeRoute)
   .use(getTicketRangesRoute)
   .use(getTicketRangeRoute)
-  .use(updateTicketRangeRoute);
+  .use(updateTicketRangeRoute)
+  .use(updateEventTicketRangeRoute);

@@ -61,6 +61,36 @@ const app = new Elysia()
       200: t.String({ description: "API greeting message" }),
     },
   })
+  .get("/debug/db-info", () => {
+    const dbUrl = env.DATABASE_URL;
+    const devDbPrefix = "postgresql://postgres:docker@localhost:5432";
+    const isProduction = !dbUrl.startsWith(devDbPrefix);
+    
+    // Extrai o host da URL do banco (sem expor credenciais)
+    const hostMatch = dbUrl.match(/@([^:\/]+)/);
+    const host = hostMatch ? hostMatch[1] : "unknown";
+    
+    return {
+      isProduction,
+      host,
+      warning: isProduction ? "⚠️ CONECTADO AO BANCO DE PRODUÇÃO!" : null,
+      nodeEnv: process.env.NODE_ENV ?? "undefined",
+    };
+  }, {
+    detail: {
+      summary: "Database Info (Dev Only)",
+      description: "Returns information about the current database connection",
+      operationId: "dbInfo",
+    },
+    response: {
+      200: t.Object({
+        isProduction: t.Boolean(),
+        host: t.String(),
+        warning: t.Union([t.String(), t.Null()]),
+        nodeEnv: t.String(),
+      }),
+    },
+  })
   .listen({
     hostname: "0.0.0.0",
     port: env.PORT,

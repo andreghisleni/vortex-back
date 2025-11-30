@@ -61,9 +61,9 @@ export const auth = betterAuth({
   plugins: [
     admin(),
     openAPI(),
-    // bearer({
-    //   requireSignature: true,
-    // }),
+    bearer({
+      requireSignature: true,
+    }),
   ],
   basePath: "/api",
   trustedOrigins: ["http://localhost:5173"],
@@ -116,12 +116,13 @@ export const OpenAPI = {
 
 export const authMacro = {
   auth: {
-    async resolve({ status, request: { headers } }: any) {
+    async resolve({ status, request: { headers, ...rest } }: any) {
       const session = await auth.api.getSession({
         headers,
       });
 
       console.log("Headers:", headers);
+      console.log("Rest of request:", rest);
 
       // biome-ignore lint/style/useBlockStatements: <explanation>
       if (!session) return status(401);
