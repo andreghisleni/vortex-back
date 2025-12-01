@@ -5,24 +5,24 @@ import { prisma } from "~/db/client";
 const paramsSchema = t.Object(
   {
     eventId: t.String({ format: "uuid" }),
-    ticketId: t.String({ format: "uuid" }),
   },
   {
-    description: "Parameters including eventId and ticketId",
+    description: "Parameters including eventId",
   }
 );
 
 const bodySchema = t.Object(
   {
+    ticketIds: t.Array(t.String({ format: "uuid" }), { minItems: 1 }),
     memberId: t.String({ format: "uuid" }),
   },
   {
-    description: "Body containing the memberId to assign the ticket to",
+    description: "Body containing the ticketIds and memberId to assign the tickets to",
   }
 );
 
 export const assignTicketRoute = new Elysia().macro(authMacro).post(
-  "/:ticketId/assign",
+  "/assign",
   async ({ params, body, set, user }) => {
     const event = await prisma.event.findUnique({
       where: { id: params.eventId },
@@ -36,12 +36,28 @@ export const assignTicketRoute = new Elysia().macro(authMacro).post(
       return { error: "Event is read-only" };
     }
 
-    const ticket = await prisma.ticket.findUnique({
-      where: { id: params.ticketId },
+    // Buscar todos os tickets
+    const tickets = await prisma.ticket.findMany({
+      where: {
+        id: { in: body.ticketIds },
+        eventId: params.eventId,
+      },
     });
-    if (!ticket || ticket.eventId !== params.eventId) {
+
+    if (tickets.length !== body.ticketIds.length) {
+      const foundIds = new Set(tickets.map((t) => t.id));
+      const notFound = body.ticketIds.filter((id: string) => !foundIds.has(id));
       set.status = 404;
-      return { error: "Ticket not found for this event" };
+      return { error: `Tickets not found for this event: ${notFound.join(", ")}` };
+    }
+
+    // Verificar se algum ticket já está vinculado a um membro
+    const alreadyAssigned = tickets.filter((t) => t.memberId !== null);
+    if (alreadyAssigned.length > 0) {
+      set.status = 400;
+      return {
+        error: `Tickets already assigned to a member: ${alreadyAssigned.map((t) => t.number).join(", ")}`,
+      };
     }
 
     const member = await prisma.member.findUnique({
@@ -63,26 +79,26 @@ export const assignTicketRoute = new Elysia().macro(authMacro).post(
       }
     }
 
-    // executar atualização e criar fluxo
+    // executar atualização e criar fluxos para todos os tickets
     await prisma.$transaction([
-      prisma.ticket.update({
-        where: { id: ticket.id },
+      prisma.ticket.updateMany({
+        where: { id: { in: body.ticketIds } },
         data: { memberId: body.memberId },
       }),
-      prisma.ticketFlow.create({
-        data: {
+      prisma.ticketFlow.createMany({
+        data: tickets.map((ticket) => ({
           ticketId: ticket.id,
           eventId: params.eventId,
-          type: "ASSIGNED",
+          type: "ASSIGNED" as const,
           fromMemberId: null,
           toMemberId: body.memberId,
           performedBy: user?.id ?? null,
-        },
+        })),
       }),
     ]);
 
     set.status = 200;
-    return { success: true };
+    return { success: true, assignedCount: tickets.length };
   },
   {
     auth: true,
@@ -90,19 +106,19 @@ export const assignTicketRoute = new Elysia().macro(authMacro).post(
     body: bodySchema,
     response: {
       200: t.Object(
-        { success: t.Boolean() },
-        { description: "Ticket assigned successfully" }
+        { success: t.Boolean(), assignedCount: t.Number() },
+        { description: "Tickets assigned successfully" }
       ),
       400: t.Object({ error: t.String() }, { description: "Invalid request" }),
       403: t.Object({ error: t.String() }, { description: "Forbidden" }),
       404: t.Object(
         { error: t.String() },
-        { description: "Ticket or Event not found" }
+        { description: "Tickets or Event not found" }
       ),
     },
     detail: {
-      summary: "Assign a ticket to a member (and optional allocation)",
-      operationId: "assignTicket",
+      summary: "Assign multiple tickets to a member (and optional allocation)",
+      operationId: "assignTickets",
     },
   }
 );
