@@ -3,6 +3,7 @@ import { createManyEventMembersRoute } from './create-many-members-route';
 import { createMemberRoute } from './create-member-route';
 import { getMemberRoute } from './get-member-route';
 import { getMembersRoute } from './get-members-route';
+import { toggleConfirmedRoute } from './toggle-confirmed-route';
 import { updateMemberRoute } from './update-member-route';
 
 export const members = new Elysia({
@@ -13,4 +14,5 @@ export const members = new Elysia({
   .use(createManyEventMembersRoute)
   .use(getMemberRoute)
   .use(getMembersRoute)
-  .use(updateMemberRoute);
+  .use(updateMemberRoute)
+  .use(toggleConfirmedRoute);

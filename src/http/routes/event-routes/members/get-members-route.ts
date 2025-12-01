@@ -225,7 +225,56 @@ export const getMembersRoute = new Elysia().macro(authMacro).get(
       orderByClause = Prisma.sql`ORDER BY ss.name ${dir}`;
     }
 
-    // 3. Query Principal (CTE para calcular agregados + Paginação)
+    // 3. Construção dos filtros para campos calculados (HAVING na query externa)
+    const havingFilters: Prisma.Sql[] = [];
+
+    // Filtros para totalAmount
+    if (query["f.totalAmount.gt"] !== undefined) {
+      havingFilters.push(Prisma.sql`"totalAmount" > ${query["f.totalAmount.gt"]}`);
+    }
+    if (query["f.totalAmount.lt"] !== undefined) {
+      havingFilters.push(Prisma.sql`"totalAmount" < ${query["f.totalAmount.lt"]}`);
+    }
+    if (query["f.totalAmount.gte"] !== undefined) {
+      havingFilters.push(Prisma.sql`"totalAmount" >= ${query["f.totalAmount.gte"]}`);
+    }
+    if (query["f.totalAmount.lte"] !== undefined) {
+      havingFilters.push(Prisma.sql`"totalAmount" <= ${query["f.totalAmount.lte"]}`);
+    }
+
+    // Filtros para totalPayed
+    if (query["f.totalPayed.gt"] !== undefined) {
+      havingFilters.push(Prisma.sql`("totalPayedWithPix" + "totalPayedWithCash") > ${query["f.totalPayed.gt"]}`);
+    }
+    if (query["f.totalPayed.lt"] !== undefined) {
+      havingFilters.push(Prisma.sql`("totalPayedWithPix" + "totalPayedWithCash") < ${query["f.totalPayed.lt"]}`);
+    }
+    if (query["f.totalPayed.gte"] !== undefined) {
+      havingFilters.push(Prisma.sql`("totalPayedWithPix" + "totalPayedWithCash") >= ${query["f.totalPayed.gte"]}`);
+    }
+    if (query["f.totalPayed.lte"] !== undefined) {
+      havingFilters.push(Prisma.sql`("totalPayedWithPix" + "totalPayedWithCash") <= ${query["f.totalPayed.lte"]}`);
+    }
+
+    // Filtros para total (saldo = totalPayed - totalAmount)
+    if (query["f.total.gt"] !== undefined) {
+      havingFilters.push(Prisma.sql`(("totalPayedWithPix" + "totalPayedWithCash") - "totalAmount") > ${query["f.total.gt"]}`);
+    }
+    if (query["f.total.lt"] !== undefined) {
+      havingFilters.push(Prisma.sql`(("totalPayedWithPix" + "totalPayedWithCash") - "totalAmount") < ${query["f.total.lt"]}`);
+    }
+    if (query["f.total.gte"] !== undefined) {
+      havingFilters.push(Prisma.sql`(("totalPayedWithPix" + "totalPayedWithCash") - "totalAmount") >= ${query["f.total.gte"]}`);
+    }
+    if (query["f.total.lte"] !== undefined) {
+      havingFilters.push(Prisma.sql`(("totalPayedWithPix" + "totalPayedWithCash") - "totalAmount") <= ${query["f.total.lte"]}`);
+    }
+
+    const havingClause = havingFilters.length
+      ? Prisma.sql`WHERE ${Prisma.join(havingFilters, " AND ")}`
+      : Prisma.empty;
+
+    // 4. Query Principal (CTE para calcular agregados + Paginação)
     // Usamos LEFT JOINS e subqueries para calcular os valores antes da paginação
     const rawQuery = Prisma.sql`
       WITH MemberStats AS (
@@ -276,17 +325,48 @@ export const getMembersRoute = new Elysia().macro(authMacro).get(
         ("totalPayedWithPix" + "totalPayedWithCash") as "totalPayed",
         (("totalPayedWithPix" + "totalPayedWithCash") - "totalAmount") as "total"
       FROM MemberStats m
+      ${havingClause}
       ${orderByClause}
       LIMIT ${pageSize} OFFSET ${offset}
     `;
 
     // Query para contar o total de registros (para paginação)
-    const countQuery = Prisma.sql`
-      SELECT COUNT(*) as total 
-      FROM members m 
-      JOIN scout_sessions ss ON m.session_id = ss.id
-      ${whereClause}
-    `;
+    // Precisa considerar os filtros de campos calculados também
+    const countQuery = havingFilters.length > 0
+      ? Prisma.sql`
+          WITH MemberStats AS (
+            SELECT 
+              m.id,
+              COALESCE((
+                SELECT SUM(etr.cost) 
+                FROM tickets t
+                JOIN event_ticket_ranges etr ON t.ticket_range_id = etr.id
+                WHERE t.member_id = m.id AND t.returned = FALSE
+              ), 0) as "totalAmount",
+              COALESCE((
+                SELECT SUM(p.amount) 
+                FROM payments p 
+                WHERE p.member_id = m.id AND p.type = 'PIX' AND p.deleted_at IS NULL
+              ), 0) as "totalPayedWithPix",
+              COALESCE((
+                SELECT SUM(p.amount) 
+                FROM payments p 
+                WHERE p.member_id = m.id AND p.type = 'CASH' AND p.deleted_at IS NULL
+              ), 0) as "totalPayedWithCash"
+            FROM members m 
+            JOIN scout_sessions ss ON m.session_id = ss.id
+            ${whereClause}
+          )
+          SELECT COUNT(*) as total 
+          FROM MemberStats m
+          ${havingClause}
+        `
+      : Prisma.sql`
+          SELECT COUNT(*) as total 
+          FROM members m 
+          JOIN scout_sessions ss ON m.session_id = ss.id
+          ${whereClause}
+        `;
 
     // Executa as queries em paralelo
     const [rawMembers, totalResult] = await Promise.all([
@@ -365,6 +445,69 @@ export const getMembersRoute = new Elysia().macro(authMacro).get(
       "f.sessionId": t.Optional(
         t.String({
           description: "Filter by session ID",
+        })
+      ),
+      // Filtros para totalAmount (custo total dos ingressos)
+      "f.totalAmount.gt": t.Optional(
+        t.Number({
+          description: "Filter members with totalAmount greater than this value",
+        })
+      ),
+      "f.totalAmount.lt": t.Optional(
+        t.Number({
+          description: "Filter members with totalAmount less than this value",
+        })
+      ),
+      "f.totalAmount.gte": t.Optional(
+        t.Number({
+          description: "Filter members with totalAmount greater than or equal to this value",
+        })
+      ),
+      "f.totalAmount.lte": t.Optional(
+        t.Number({
+          description: "Filter members with totalAmount less than or equal to this value",
+        })
+      ),
+      // Filtros para totalPayed (total pago)
+      "f.totalPayed.gt": t.Optional(
+        t.Number({
+          description: "Filter members with totalPayed greater than this value",
+        })
+      ),
+      "f.totalPayed.lt": t.Optional(
+        t.Number({
+          description: "Filter members with totalPayed less than this value",
+        })
+      ),
+      "f.totalPayed.gte": t.Optional(
+        t.Number({
+          description: "Filter members with totalPayed greater than or equal to this value",
+        })
+      ),
+      "f.totalPayed.lte": t.Optional(
+        t.Number({
+          description: "Filter members with totalPayed less than or equal to this value",
+        })
+      ),
+      // Filtros para total (saldo = totalPayed - totalAmount)
+      "f.total.gt": t.Optional(
+        t.Number({
+          description: "Filter members with balance (total) greater than this value",
+        })
+      ),
+      "f.total.lt": t.Optional(
+        t.Number({
+          description: "Filter members with balance (total) less than this value",
+        })
+      ),
+      "f.total.gte": t.Optional(
+        t.Number({
+          description: "Filter members with balance (total) greater than or equal to this value",
+        })
+      ),
+      "f.total.lte": t.Optional(
+        t.Number({
+          description: "Filter members with balance (total) less than or equal to this value",
         })
       ),
       "p.page": t.Optional(
