@@ -60,15 +60,14 @@ const memberSchema = t.Object(
       )
     ),
 
-    ticketAllocations: t.Array(
+    ticketsByRange: t.Array(
       t.Object(
         {
-          id: t.String({ format: "uuid" }),
           eventTicketRangeId: t.String({ format: "uuid" }),
           quantity: t.Number(),
         },
         {
-          description: "Ticket allocation details associated with the member",
+          description: "Ticket count per EventTicketRange for this member",
         }
       )
     ),
@@ -393,7 +392,6 @@ export const getMembersRoute = new Elysia().macro(authMacro).get(
       include: {
         tickets: true,
         session: true,
-        ticketAllocations: true,
         payments: { where: { deletedAt: null } },
       },
     });
@@ -406,8 +404,28 @@ export const getMembersRoute = new Elysia().macro(authMacro).get(
 
         if (!details) { return null; }
 
+        // Agrupa tickets por ticketRangeId e conta quantos existem em cada grupo
+        const ticketsByRange = details.tickets.reduce(
+          (acc, ticket) => {
+            if (ticket.ticketRangeId) {
+              acc[ticket.ticketRangeId] = (acc[ticket.ticketRangeId] || 0) + 1;
+            }
+            return acc;
+          },
+          {} as Record<string, number>
+        );
+
+        // Converte o agrupamento para o formato esperado pelo schema
+        const ticketsByRangeList = Object.entries(ticketsByRange).map(
+          ([eventTicketRangeId, quantity]) => ({
+            eventTicketRangeId,
+            quantity,
+          })
+        );
+
         return {
           ...details,
+          ticketsByRange: ticketsByRangeList,
           // Conversões de BigInt para Number são obrigatórias para JSON
           totalTickets: Number(raw.totalTickets),
           totalTicketsToDeliver: Number(raw.totalTicketsToDeliver),
