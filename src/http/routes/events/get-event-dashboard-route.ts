@@ -2,8 +2,6 @@ import Elysia, { t } from 'elysia';
 import { authMacro } from '~/auth';
 import { prisma } from '~/db/client';
 
-const DEFAULT_TICKET_COST = 50;
-
 export const getEventDashboardRoute = new Elysia()
   .macro(authMacro)
   .get(
@@ -129,7 +127,7 @@ export const getEventDashboardRoute = new Elysia()
             },
             payments: {
               where: { deletedAt: null },
-              select: { amount: true }
+              select: { amount: true, payedAt: true }
             }
           }
         }),
@@ -143,7 +141,7 @@ export const getEventDashboardRoute = new Elysia()
       for (const range of eventTicketRangesWithCost) {
         ticketRangeCostMap.set(range.id, {
           type: range.type,
-          cost: range.cost ?? DEFAULT_TICKET_COST,
+          cost: range.cost ?? 0,
         });
       }
 
@@ -165,6 +163,12 @@ export const getEventDashboardRoute = new Elysia()
 
         const totalPaymentsMade = member.payments.reduce((sum, payment) => sum + payment.amount, 0);
         const isPaidOff = totalPaymentsMade >= totalCostExpected;
+        
+        // Encontrar a data do último pagamento
+        const lastPaymentDate = member.payments.length > 0
+          ? member.payments.reduce((latest, payment) => 
+              payment.payedAt > latest ? payment.payedAt : latest, member.payments[0].payedAt)
+          : null;
 
         return {
           memberId: member.id,
@@ -173,15 +177,51 @@ export const getEventDashboardRoute = new Elysia()
           totalPaymentsMade,
           totalCostExpected,
           isPaidOff,
+          lastPaymentDate,
           isAllConfirmedButNotYetFullyPaid: member.isAllConfirmedButNotYetFullyPaid,
         };
       });
 
       // Calcular ingressos pagos por tipo (membros quitados)
       const payedPerType: Record<string, number> = {};
+      let totalPayedTicketsCount = 0;
+      const sevenDaysAgo = new Date(new Date().setDate(new Date().getDate() - 7));
+      let totalPayedTicketsOnLastWeekCount = 0;
+      
       for (const member of processedMembers.filter((m) => m.isPaidOff)) {
+        totalPayedTicketsCount += member.totalTickets;
+        
+        // Verificar se o último pagamento foi nos últimos 7 dias
+        if (member.lastPaymentDate && member.lastPaymentDate >= sevenDaysAgo) {
+          totalPayedTicketsOnLastWeekCount += member.totalTickets;
+        }
+        
         for (const [type, count] of Object.entries(member.ticketsPerType)) {
           payedPerType[type] = (payedPerType[type] || 0) + count;
+        }
+      }
+
+      // Calcular ingressos não pagos por tipo (membros que ainda não quitaram)
+      const unpaidPerType: Record<string, number> = {};
+      let totalUnpaidTicketsCount = 0;
+      
+      for (const member of processedMembers.filter((m) => !m.isPaidOff)) {
+        totalUnpaidTicketsCount += member.totalTickets;
+        
+        for (const [type, count] of Object.entries(member.ticketsPerType)) {
+          unpaidPerType[type] = (unpaidPerType[type] || 0) + count;
+        }
+      }
+
+      // Calcular ingressos confirmados mas não quitados (isAllConfirmedButNotYetFullyPaid = true E não quitado)
+      const confirmedButUnpaidPerType: Record<string, number> = {};
+      let totalConfirmedButUnpaidTicketsCount = 0;
+      
+      for (const member of processedMembers.filter((m) => !m.isPaidOff && m.isAllConfirmedButNotYetFullyPaid)) {
+        totalConfirmedButUnpaidTicketsCount += member.totalTickets;
+        
+        for (const [type, count] of Object.entries(member.ticketsPerType)) {
+          confirmedButUnpaidPerType[type] = (confirmedButUnpaidPerType[type] || 0) + count;
         }
       }
 
@@ -206,6 +246,16 @@ export const getEventDashboardRoute = new Elysia()
         ticketCount: count,
       }));
 
+      const totalUnpaidTicketsPerType = Object.entries(unpaidPerType).map(([type, count]) => ({
+        type,
+        ticketCount: count,
+      }));
+
+      const totalConfirmedButUnpaidTicketsPerType = Object.entries(confirmedButUnpaidPerType).map(([type, count]) => ({
+        type,
+        ticketCount: count,
+      }));
+
       return {
         totalTickets,
         totalTicketsLinkedToMembers,
@@ -214,11 +264,15 @@ export const getEventDashboardRoute = new Elysia()
         totalTicketsAfterImport,
         totalWithCritica,
         totalWithCriticaAndDelivered,
-        totalPayedTickets: Number((totalValue / DEFAULT_TICKET_COST).toFixed(0)),
-        totalPayedTicketsOnLastWeek: Number((totalValueOnLastWeek / DEFAULT_TICKET_COST).toFixed(0)),
+        totalPayedTickets: totalPayedTicketsCount,
+        totalPayedTicketsOnLastWeek: totalPayedTicketsOnLastWeekCount,
         totalValuePayedTickets: totalValue,
         totalValuePayedTicketsOnLastWeek: totalValueOnLastWeek,
         totalPayedTicketsPerType,
+        totalUnpaidTickets: totalUnpaidTicketsCount,
+        totalUnpaidTicketsPerType,
+        totalConfirmedButUnpaidTickets: totalConfirmedButUnpaidTicketsCount,
+        totalConfirmedButUnpaidTicketsPerType,
         possibleTotalTickets,
         totalPredictedTicketsPerType,
         totalMembers,
@@ -263,6 +317,16 @@ export const getEventDashboardRoute = new Elysia()
           totalValuePayedTickets: t.Number(),
           totalValuePayedTicketsOnLastWeek: t.Number(),
           totalPayedTicketsPerType: t.Array(t.Object({
+            type: t.String(),
+            ticketCount: t.Number(),
+          })),
+          totalUnpaidTickets: t.Number(),
+          totalUnpaidTicketsPerType: t.Array(t.Object({
+            type: t.String(),
+            ticketCount: t.Number(),
+          })),
+          totalConfirmedButUnpaidTickets: t.Number(),
+          totalConfirmedButUnpaidTicketsPerType: t.Array(t.Object({
             type: t.String(),
             ticketCount: t.Number(),
           })),
