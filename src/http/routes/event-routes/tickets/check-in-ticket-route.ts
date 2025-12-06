@@ -2,6 +2,31 @@ import Elysia, { t } from "elysia";
 import { authMacro } from "~/auth";
 import { prisma } from "~/db/client";
 
+// Função auxiliar para calcular se o membro tem saldo negativo
+function calculateNegativeBalance(member: {
+  payments: Array<{ amount: number }>;
+  tickets: Array<{
+    returned: boolean;
+    ticketRange: { cost: number | null } | null;
+  }>;
+} | null): boolean {
+  if (!member) return false;
+
+  // Calcula o total pago
+  const totalPayed = member.payments.reduce((sum, payment) => sum + payment.amount, 0);
+
+  // Calcula o custo total dos tickets não devolvidos
+  const totalCost = member.tickets
+    .filter((ticket) => !ticket.returned)
+    .reduce((sum, ticket) => {
+      const cost = ticket.ticketRange?.cost ?? 0;
+      return sum + cost;
+    }, 0);
+
+  // Retorna true se o saldo for negativo
+  return totalPayed < totalCost;
+}
+
 const paramsSchema = t.Object(
   {
     eventId: t.String({ format: "uuid" }),
@@ -40,6 +65,8 @@ const ticketResponseSchema = t.Object({
       }),
     })
   ),
+  returned: t.Boolean(),
+  negativeBalance: t.Boolean(),
 });
 
 export const checkInTicketRoute = new Elysia().macro(authMacro).post(
@@ -63,10 +90,42 @@ export const checkInTicketRoute = new Elysia().macro(authMacro).post(
         eventId: params.eventId,
         number: body.ticketNumber,
       },
-      include: {
+      select: {
+        id: true,
+        number: true,
+        name: true,
+        phone: true,
+        description: true,
+        deliveredAt: true,
+        returned: true,
         member: {
-          include: {
-            session: true,
+          select: {
+            id: true,
+            name: true,
+            session: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            payments: {
+              where: {
+                deletedAt: null,
+              },
+              select: {
+                amount: true,
+              },
+            },
+            tickets: {
+              select: {
+                returned: true,
+                ticketRange: {
+                  select: {
+                    cost: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -100,6 +159,8 @@ export const checkInTicketRoute = new Elysia().macro(authMacro).post(
               },
             }
           : null,
+        returned: ticket.returned,
+        negativeBalance: calculateNegativeBalance(ticket.member),
       };
     }
 
@@ -139,6 +200,8 @@ export const checkInTicketRoute = new Elysia().macro(authMacro).post(
             },
           }
         : null,
+      returned: ticket.returned,
+      negativeBalance: calculateNegativeBalance(ticket.member),
     };
   },
   {
